@@ -1,0 +1,71 @@
+temp/
+tmp/
+.tmp/
+.temp/
+.rpa/
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.virtual_documents/
+*/.virtual_documents/*
+.DS_Store
+*.zip
+*/work-items-out/*
+testrun/*
+.~lock*
+*.pkl
+
+
+*.csv
+*.xls
+*.xlsx
+
+test/
+tests/
+
+#ignore input / ouput folder
+input/
+output/
+export/
+download/
+reports/
+report_*.csv
+.env
+#ignore folder with a secret files, if it doesn't contain .gitignore
+# secrets/
+# Ignore environment configuration files with sensitive information
+Vault.json
+sa.json
+service_account.json
+devdata/env.json
+.env
+.env.dev
+.env.prod
+# Ignore compiled binaries
+*.exe
+*.o
+*.out
+token365.json
+# Ignore log files
+*.log
+
+# Ignore virtual environment directories (for Python projects)
+venv/
+.venv/
+
+# Ignore compiled bytecode files (for Python projects)
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore database files
+*.db
+*.sqlite
+
+# Ignore editor/IDE-specific files and directories
+.vscode/
+.idea/
+/.idea/
+
+
+
+

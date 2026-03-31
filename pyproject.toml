@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gdrive-cleaner"
+version = "0.1.0"
+description = "Google Drive maintenance CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "google-api-python-client",
+  "google-auth",
+  "pandas",
+  "openpyxl",
+  "python-calamine",
+  "rich",
+  "tenacity",
+]
+
+[project.scripts]
+gdrive-cleaner = "gdrive_cleaner.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
