@@ -1,71 +1,93 @@
-temp/
-tmp/
-.tmp/
-.temp/
-.rpa/
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/*
-.virtual_documents/
-*/.virtual_documents/*
+# =========================
+# OS / editor junk
+# =========================
 .DS_Store
-*.zip
-*/work-items-out/*
-testrun/*
+.vscode/
+.idea/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+.virtual_documents/
+**/.virtual_documents/
 .~lock*
+
+# =========================
+# Python artifacts
+# =========================
+__pycache__/
+*.pyc
+*.pyo
 *.pkl
+*.db
+*.sqlite
+.pytest_cache/
+*.egg-info/
+venv/
+.venv/
 
+# =========================
+# Logs / binaries / archives
+# =========================
+*.log
+*.zip
+*.exe
+*.o
+*.out
 
+# =========================
+# Temporary folders/files (any depth, common naming variants)
+# =========================
+**/[Tt]emp/
+**/[Tt]mp/
+**/.[Tt]emp/
+**/.[Tt]mp/
+**/[Tt]emporary/
+
+# =========================
+# Generated data folders (any depth, common naming variants)
+# =========================
+**/[Ii]nput/
+**/[Oo]utput/
+**/[Ee]xport/
+**/[Ee]xports/
+**/[Dd]ownload/
+**/[Dd]ownloads/
+**/[Rr]eport/
+**/[Rr]eports/
+**/work-items-out/
+
+# Generated report files (any depth)
+**/[Rr]eport_*.csv
+
+# If your team commits CSV/XLS(X) fixtures, remove these lines.
 *.csv
 *.xls
 *.xlsx
 
-test/
-tests/
-
-#ignore input / ouput folder
-input/
-output/
-export/
-download/
-reports/
-report_*.csv
+# =========================
+# Secrets / credentials (prevent leaks)
+# =========================
 .env
-#ignore folder with a secret files, if it doesn't contain .gitignore
-# secrets/
-# Ignore environment configuration files with sensitive information
-Vault.json
-sa.json
-service_account.json
-devdata/env.json
-.env
-.env.dev
-.env.prod
-# Ignore compiled binaries
-*.exe
-*.o
-*.out
-token365.json
-# Ignore log files
-*.log
+.env.*
+!.env.example
+!.env.template
 
-# Ignore virtual environment directories (for Python projects)
-venv/
-.venv/
+**/[Vv]ault.json
+**/sa.json
+**/service_account.json
+**/service-account*.json
+**/*service_account*.json
+**/client_secret*.json
+**/token*.json
+**/oauth*.json
+**/*credentials*.json
+**/devdata/env.json
 
-# Ignore compiled bytecode files (for Python projects)
-*.pyc
-*.pyo
-__pycache__/
+**/[Ss]ecrets/
+**/.secrets/
+**/[Pp]rivate/
 
-# Ignore database files
-*.db
-*.sqlite
+# Tool-specific
+.rpa/
 
-# Ignore editor/IDE-specific files and directories
-.vscode/
-.idea/
-/.idea/
-
-
-
-
+# Test run output
+testrun/

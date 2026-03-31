@@ -31,12 +31,33 @@ Always run destructive operations with `--dry-run` first, verify IDs, and test i
 
 - Python 3.10+
 - Google Service Account JSON key with Drive API access
-- Dependencies from `requirements.txt`
+- Dependencies from `pyproject.toml`
 
 Install:
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -e .
+```
+
+Run:
+
+```bash
+gdrive-cleaner --help
+# Alternative:
+python -m gdrive_cleaner.cli --help
+```
+
+Optional extras:
+
+```bash
+# Development dependencies (tests)
+python -m pip install -e ".[dev]"
+
+# Jupyter/Notebook dependencies (including PyCharm notebook workflow)
+python -m pip install -e ".[notebook]"
+
+# All optional groups
+python -m pip install -e ".[dev,notebook]"
 ```
 
 ## Authentication
@@ -65,7 +86,7 @@ Available for all commands:
 Usage:
 
 ```bash
-python cli.py list [PARENT_ID] [filters/options]
+gdrive-cleaner list [PARENT_ID] [filters/options]
 ```
 
 Options:
@@ -91,7 +112,7 @@ Notes:
 Usage:
 
 ```bash
-python cli.py delete [ID] [-i IDS_FILE] [time-filters] [--force] [-d] [--csv]
+gdrive-cleaner delete [ID] [-i IDS_FILE] [time-filters] [--force] [-d] [--csv]
 ```
 
 Input source:
@@ -118,7 +139,7 @@ Behavior:
 Usage:
 
 ```bash
-python cli.py clear-folder <FOLDER_ID> [time-filters] [--force] [-d] [--csv]
+gdrive-cleaner clear-folder <FOLDER_ID> [time-filters] [--force] [-d] [--csv]
 ```
 
 Options:
@@ -138,7 +159,7 @@ Behavior:
 Usage:
 
 ```bash
-python cli.py fetch <ID> [-p PATH] [-r] [-e] [--force] [-d]
+gdrive-cleaner fetch <ID> [-p PATH] [-r] [-e] [--force] [-d]
 ```
 
 Options:
@@ -170,7 +191,7 @@ Download/collision mechanics:
 Usage:
 
 ```bash
-python cli.py quota
+gdrive-cleaner quota
 ```
 
 Outputs: Used, Free, Total.
@@ -240,25 +261,25 @@ Outputs: Used, Free, Total.
 
 ```bash
 # List folders older than 90 days in a specific parent
-python cli.py list <PARENT_ID> --folders-only --older 90
+gdrive-cleaner list <PARENT_ID> --folders-only --older 90
 
 # Export analysis report to XLSX
-python cli.py list <PARENT_ID> --xlsx audit.xlsx --resolve-parents
+gdrive-cleaner list <PARENT_ID> --xlsx audit.xlsx --resolve-parents
 
 # Delete by date filter and always save operation report
-python cli.py delete --older 120 --csv
+gdrive-cleaner delete --older 120 --csv
 
 # Delete by IDs file (interactive confirmation, optional prompt for report in TTY)
-python cli.py delete -i to_delete.xlsx
+gdrive-cleaner delete -i to_delete.xlsx
 
 # Clear old content in folder (preview)
-python cli.py clear-folder <FOLDER_ID> --before 2025-01-01 --dry-run
+gdrive-cleaner clear-folder <FOLDER_ID> --before 2025-01-01 --dry-run
 
 # Recursively fetch a folder and export Google docs
-python cli.py fetch <FOLDER_ID> -r -e -p ./backup
+gdrive-cleaner fetch <FOLDER_ID> -r -e -p ./backup
 
 # Show quota
-python cli.py quota
+gdrive-cleaner quota
 ```
 
 ## Exit/Failure Notes

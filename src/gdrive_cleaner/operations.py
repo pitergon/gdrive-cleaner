@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from drive_core import DriveCore, FileFilter, FileItem, OperationResult
+from gdrive_cleaner.drive_core import DriveCore, FileFilter, FileItem, OperationResult
 
 logger = logging.getLogger(__name__)
 

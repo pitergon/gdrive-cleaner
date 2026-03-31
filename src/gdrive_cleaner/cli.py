@@ -18,8 +18,8 @@ from rich.progress import (
     TextColumn,
 )
 
-from drive_core import DriveCore, FileFilter, FileItem, OperationResult
-from operations import DriveOperations, convert_size
+from gdrive_cleaner.drive_core import DriveCore, FileFilter, FileItem, OperationResult
+from gdrive_cleaner.operations import DriveOperations, convert_size
 
 CONSOLE_LIMIT = 200
 EXPORT_FOLDER = "export"

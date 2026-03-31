@@ -11,11 +11,22 @@ requires-python = ">=3.10"
 dependencies = [
   "google-api-python-client",
   "google-auth",
-  "pandas",
+  "pandas>=2.2",
   "openpyxl",
-  "python-calamine",
+  "python-calamine>=0.2.0",
   "rich",
   "tenacity",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+]
+notebook = [
+  "ipykernel>=6.29",
+  "jupyter>=1.0",
+  "notebook>=7.0",
 ]
 
 [project.scripts]
