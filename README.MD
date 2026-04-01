@@ -226,6 +226,34 @@ Outputs: Used, Free, Total.
 - Empty/NaN values are ignored.
 - IDs are deduplicated before batch metadata lookup/deletion.
 
+## Testing
+
+Run regular tests (offline, no real Drive access):
+
+```bash
+pytest
+```
+
+Run real Google Drive integration tests (explicit opt-in):
+
+```bash
+# 1) Copy local template (do not commit .env.test):
+# cp .env.test.example .env.test
+#
+# 2) Fill values in .env.test:
+# RUN_GDRIVE_INTEGRATION=1
+# GOOGLE_APPLICATION_CREDENTIALS=/abs/path/to/service_account.json
+# TEST_DRIVE_FOLDER_ID=<safe test parent folder id>
+#
+# 3) Run:
+pytest -m integration
+```
+
+Notes:
+- Integration tests create temporary items under `TEST_DRIVE_FOLDER_ID` and remove them in cleanup.
+- Use a dedicated non-production test folder only.
+- `pytest` auto-loads `.env` and `.env.test` if present; shell env vars have priority.
+
 ## Key Behavior and Risks
 
 1. **Owner-only scope by default in API queries.**  

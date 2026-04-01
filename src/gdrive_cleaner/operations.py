@@ -111,9 +111,8 @@ class DriveOperations:
         # dt_cols = df.select_dtypes(include=["datetime64[ns, UTC]", "datetimetz"]).columns
         dt_cols = df.select_dtypes(include=["datetimetz", "datetime"]).columns
         for col in dt_cols:
-            #df[col] = df[col].dt.tz_localize(None)
+            # df[col] = df[col].dt.tz_localize(None)
             df[col] = pd.to_datetime(df[col], errors="coerce", utc=True).dt.tz_localize(None)
-
 
         for col in ["created_date", "modified_date"]:
             if col in df.columns:
@@ -292,7 +291,6 @@ class DriveOperations:
             ids=ids, metadata=metadata, batch_size=batch_size, on_progress=on_progress
         )
 
-
     def fetch_item(
         self,
         item_or_id: FileItem | str,
@@ -434,36 +432,6 @@ class DriveOperations:
                 # callback with error status
                 on_progress(item.id, item.name, 0, item.size, "error")
             raise e
-
-
-    def _setup_test_structure(self, root_folder_id: str):
-        self.logger.info("Creating test structure in folder: %s", root_folder_id)
-
-        # 1. Create main test folder and subfolder
-        test_folder_id = self.drive.create_item(
-            "Test_Folder", "application/vnd.google-apps.folder", parent_id=root_folder_id
-        )
-
-        subfolder1_id = self.drive.create_item(
-            "Subfolder1", "application/vnd.google-apps.folder", parent_id=test_folder_id
-        )
-
-        subfolder2_id = self.drive.create_item(
-            "Subfolder2", "application/vnd.google-apps.folder", parent_id=subfolder1_id
-        )
-
-        # 2. Create files in root and subfolder
-        files_to_create = [
-            {"name": "test_file.txt", "parent": test_folder_id, "content": "Hello Root"},
-            {"name": "sub_file_1.txt", "parent": subfolder1_id, "content": "Content 1"},
-            {"name": "sub_file_2.txt", "parent": subfolder2_id, "content": "Content 2"},
-            # File with the same name in root to test conflict handling
-            {"name": "test_file.txt", "parent": subfolder1_id, "content": "I am a shadow"},
-        ]
-
-        for f in files_to_create:
-            fid = self.drive.create_item(f["name"], "text/plain", f["parent"], f["content"])
-            self.logger.info("Created file: %s (ID: %s)", f["name"], fid)
 
     def get_quota_info(self):
         try:
