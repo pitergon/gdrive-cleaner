@@ -43,6 +43,8 @@ Run:
 
 ```bash
 gdrive-cleaner --help
+# Alias
+gdc --help
 # Alternative:
 python -m gdrive_cleaner.cli --help
 ```
