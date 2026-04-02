@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from gdrive_cleaner.cli import UserInputError, get_date_filters, read_ids_file
+from gdrive_cleaner.cli import UserInputError, build_parser, get_date_filters, read_ids_file
 
 
 def test_read_ids_file_csv_reads_unique_ids(tmp_path):
@@ -43,3 +43,14 @@ def test_get_date_filters_rejects_invalid_range():
     with pytest.raises(UserInputError):
         get_date_filters(args)
 
+
+def test_parser_accepts_name_and_prefix_filters():
+    parser = build_parser()
+
+    args_name = parser.parse_args(["list", "--name", "Report Q1"])
+    assert args_name.name == "Report Q1"
+    assert args_name.prefix is None
+
+    args_prefix = parser.parse_args(["delete", "--prefix", "Report_"])
+    assert args_prefix.prefix == "Report_"
+    assert args_prefix.name is None

@@ -52,6 +52,8 @@ def test_handle_delete_rejects_ids_with_date_filters():
         dry_run=False,
         force=False,
         csv=False,
+        name=None,
+        prefix=None,
     )
 
     with pytest.raises(UserInputError):
@@ -70,6 +72,8 @@ def test_handle_delete_requires_any_filter():
         dry_run=False,
         force=False,
         csv=False,
+        name=None,
+        prefix=None,
     )
 
     with pytest.raises(UserInputError):
@@ -89,6 +93,8 @@ def test_handle_delete_dry_run_does_not_delete():
         dry_run=True,
         force=False,
         csv=False,
+        name=None,
+        prefix=None,
     )
 
     handle_delete(args, ops)
@@ -96,3 +102,22 @@ def test_handle_delete_dry_run_does_not_delete():
     assert ops.get_items_batch_called == 1
     assert ops.delete_items_called == 0
 
+
+def test_handle_delete_rejects_ids_with_name_filters():
+    ops = DummyOps()
+    args = Namespace(
+        id="123",
+        ids_file=None,
+        older=None,
+        before=None,
+        newer=None,
+        after=None,
+        dry_run=False,
+        force=False,
+        csv=False,
+        name="report.txt",
+        prefix=None,
+    )
+
+    with pytest.raises(UserInputError):
+        handle_delete(args, ops)

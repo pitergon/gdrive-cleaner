@@ -114,6 +114,12 @@ def get_date_filters(args: argparse.Namespace):
     return date_before, date_after
 
 
+def get_name_filters(args: argparse.Namespace):
+    name_exact = getattr(args, "name", None)
+    name_prefix = getattr(args, "prefix", None)
+    return name_exact, name_prefix
+
+
 def read_ids_file(file_path: Path) -> list[str]:
     """
     Reads a .csv or .xlsx file and extracts unique IDs from the 'id' column.
@@ -342,11 +348,23 @@ def build_parser():
     lower_date_group.add_argument(
         "-a", "--after", type=valid_date, metavar="<YYYY-MM-DD>", help="Created after date"
     )
+    name_filters = argparse.ArgumentParser(add_help=False, formatter_class=formatter)
+    name_group = name_filters.add_mutually_exclusive_group()
+    name_group.add_argument(
+        "--name",
+        metavar="<NAME>",
+        help="Filter by exact file/folder name",
+    )
+    name_group.add_argument(
+        "--prefix",
+        metavar="<PREFIX>",
+        help="Filter by file/folder name prefix",
+    )
 
     # list
     list_cmd = subparsers.add_parser(
         "list",
-        parents=[base_parent, time_filters],
+        parents=[base_parent, time_filters, name_filters],
         help="List files/folders",
         formatter_class=formatter,
     )
@@ -384,7 +402,7 @@ def build_parser():
     # delete
     delete_cmd = subparsers.add_parser(
         "delete",
-        parents=[base_parent, time_filters],
+        parents=[base_parent, time_filters, name_filters],
         help="Delete files",
         formatter_class=formatter,
     )
@@ -404,7 +422,7 @@ def build_parser():
     # clear-folder
     clear_cmd = subparsers.add_parser(
         "clear-folder",
-        parents=[base_parent, time_filters],
+        parents=[base_parent, time_filters, name_filters],
         help="Clear files in specific folder. Subfolders will be deleted with their content!",
         formatter_class=formatter,
     )
@@ -448,11 +466,14 @@ def build_parser():
 
 def handle_list(args: argparse.Namespace, ops: DriveOperations):
     date_before, date_after = get_date_filters(args)
+    name_exact, name_prefix = get_name_filters(args)
 
     file_filter = FileFilter(
         folder_id=args.id if args.id else None,
         created_before=date_before,
         created_after=date_after,
+        name_exact=name_exact,
+        name_prefix=name_prefix,
         mime_type="application/vnd.google-apps.folder" if args.folders_only else None,
     )
 
@@ -509,14 +530,16 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
 def handle_delete(args: argparse.Namespace, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
     date_before, date_after = get_date_filters(args)
+    name_exact, name_prefix = get_name_filters(args)
 
     has_ids_filter = bool(args.id or args.ids_file)
     has_date_filter = bool(date_before or date_after)
+    has_name_filter = bool(name_exact or name_prefix)
     requested_ids_count: int | None = None
     resolved_ids_count: int | None = None
 
-    if has_ids_filter and has_date_filter:
-        raise UserInputError("Use either ID/--ids-file or date filters, not both.")
+    if has_ids_filter and (has_date_filter or has_name_filter):
+        raise UserInputError("Use either ID/--ids-file or API filters (--older/--before/--newer/--after/--name/--prefix), not both.")
 
     items = []
     with error_console.status("[bold yellow]Checking...") as status:
@@ -540,13 +563,20 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
             items = [item for item in items_map.values() if item is not None]
             resolved_ids_count = len(items)
 
-        elif has_date_filter:
-            file_filter = FileFilter(created_before=date_before, created_after=date_after)
+        elif has_date_filter or has_name_filter:
+            file_filter = FileFilter(
+                created_before=date_before,
+                created_after=date_after,
+                name_exact=name_exact,
+                name_prefix=name_prefix,
+            )
             status.update("[bold yellow]Listing items...[/bold yellow]")
             items = ops.list_files(file_filter=file_filter, on_progress=on_list_progress)
 
         else:
-            raise UserInputError("Please specify ID, --ids-file or time filters (-o/-b/-n/-a)")
+            raise UserInputError(
+                "Please specify ID, --ids-file or API filters (--older/--before/--newer/--after/--name/--prefix)"
+            )
 
     if not items:
         error_console.print("No items found to delete.")
@@ -623,6 +653,7 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
 def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
     date_before, date_after = get_date_filters(args)
+    name_exact, name_prefix = get_name_filters(args)
 
     with error_console.status("[bold yellow]Checking...") as status:
 
@@ -639,7 +670,11 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
         # 2. Listing
         status.update(f"[bold yellow]Listing files in '{folder.name}'...[/bold yellow]")
         file_filter = FileFilter(
-            folder_id=args.folder_id, created_before=date_before, created_after=date_after
+            folder_id=args.folder_id,
+            created_before=date_before,
+            created_after=date_after,
+            name_exact=name_exact,
+            name_prefix=name_prefix,
         )
         items = ops.list_files(file_filter=file_filter, on_progress=on_list_progress)
 

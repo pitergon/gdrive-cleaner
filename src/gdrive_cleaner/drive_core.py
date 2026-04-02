@@ -33,7 +33,9 @@ logger = logging.getLogger(__name__)
 class FileFilter:
     folder_id: str | None = None
     folder_name: str | None = None
-    name_contains: str | None = None
+    name_exact: str | None = None
+    name_prefix: str | None = None  # Readable field name for filtering. Drive API uses "name contains" for prefix matching
+    name_contains: str | None = None  # Reserved for future explicit "contains" mode.
     created_after: datetime | None = None
     created_before: datetime | None = None
     mime_type: str | None = None
@@ -161,6 +163,10 @@ class DriveCore:
     # QUERY BUILDER
     # ----------------------------------
 
+    @staticmethod
+    def _escape_query_value(value: str) -> str:
+        return value.replace("\\", "\\\\").replace("'", "\\'")
+
     def _build_query(self, file_filter: FileFilter) -> str:
         conditions = []
 
@@ -170,8 +176,20 @@ class DriveCore:
         if file_filter.folder_id:
             conditions.append(f"'{file_filter.folder_id}' in parents")
 
+        if file_filter.name_exact:
+            safe = self._escape_query_value(file_filter.name_exact)
+            conditions.append(f"name = '{safe}'")
+
+        if file_filter.name_prefix:
+            # For readability in CLI/business code we keep a dedicated name_prefix field.
+            # In Drive API it is implemented via `name contains` (prefix-style matching).
+            safe = self._escape_query_value(file_filter.name_prefix)
+            conditions.append(f"name contains '{safe}'")
+
         if file_filter.name_contains:
-            conditions.append(f"name contains '{file_filter.name_contains}'")
+            # Reserved for future use cases where explicit "contains" semantics are needed.
+            safe = self._escape_query_value(file_filter.name_contains)
+            conditions.append(f"name contains '{safe}'")
 
         if file_filter.created_after:
             iso = file_filter.created_after.replace(tzinfo=timezone.utc, hour=0, minute=0, second=0,

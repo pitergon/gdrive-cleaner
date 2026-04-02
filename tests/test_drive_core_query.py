@@ -40,10 +40,29 @@ def test_build_query_full_filter_set():
     assert "trashed = false" in query
 
 
+def test_build_query_name_and_prefix_filters():
+    core = make_core_for_query()
+    query = core._build_query(
+        FileFilter(
+            name_exact="report.csv",
+            name_prefix="report_",
+        )
+    )
+
+    assert "name = 'report.csv'" in query
+    assert "name contains 'report_'" in query
+
+
+def test_build_query_escapes_single_quote_and_backslash():
+    core = make_core_for_query()
+    query = core._build_query(FileFilter(name_exact=r"O'Reilly\Docs"))
+
+    assert r"name = 'O\'Reilly\\Docs'" in query
+
+
 def test_build_query_can_disable_owner_only_and_trashed_filter():
     core = make_core_for_query()
     query = core._build_query(FileFilter(owner_only=False, trashed=True))
 
     assert "owners" not in query
     assert "trashed = false" not in query
-
