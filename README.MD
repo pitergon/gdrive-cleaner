@@ -102,7 +102,7 @@ Options:
 - `-r, --resolve-parents`: resolve external parent folder names in exports.
 - `-l, --limit <COUNT>`: max items to list/export.
 - `--name <NAME>`: exact file/folder name filter.
-- `--prefix <PREFIX>`: file/folder name prefix filter.
+- `--contains <TEXT>`: file/folder name contains filter.
 
 Notes:
 
@@ -126,7 +126,7 @@ Input source:
 Important parser/validation rules:
 
 - `id` and `--ids-file` are mutually exclusive.
-- Mixing ID source (`id`/`--ids-file`) with API filters (`--older/--before/--newer/--after/--name/--prefix`) is rejected at runtime.
+- Mixing ID source (`id`/`--ids-file`) with API filters (`--older/--before/--newer/--after/--name/--contains`) is rejected at runtime.
 - `--csv` is independent from input source and can be combined with `id`, `--ids-file`, or API filters.
 
 Behavior:
@@ -148,7 +148,7 @@ Options:
 
 - `folder_id` (required): target folder ID.
 - Time filters: `--older`, `--before`, `--newer`, `--after`.
-- Name filters: `--name`, `--prefix`.
+- Name filters: `--name`, `--contains`.
 - `--csv`: always save detailed CSV report without prompt.
 
 Behavior:

@@ -116,8 +116,8 @@ def get_date_filters(args: argparse.Namespace):
 
 def get_name_filters(args: argparse.Namespace):
     name_exact = getattr(args, "name", None)
-    name_prefix = getattr(args, "prefix", None)
-    return name_exact, name_prefix
+    name_contains = getattr(args, "contains", None)
+    return name_exact, name_contains
 
 
 def read_ids_file(file_path: Path) -> list[str]:
@@ -356,9 +356,9 @@ def build_parser():
         help="Filter by exact file/folder name",
     )
     name_group.add_argument(
-        "--prefix",
-        metavar="<PREFIX>",
-        help="Filter by file/folder name prefix",
+        "--contains",
+        metavar="<TEXT>",
+        help="Filter by file/folder name containing text",
     )
 
     # list
@@ -466,14 +466,14 @@ def build_parser():
 
 def handle_list(args: argparse.Namespace, ops: DriveOperations):
     date_before, date_after = get_date_filters(args)
-    name_exact, name_prefix = get_name_filters(args)
+    name_exact, name_contains = get_name_filters(args)
 
     file_filter = FileFilter(
         folder_id=args.id if args.id else None,
         created_before=date_before,
         created_after=date_after,
         name_exact=name_exact,
-        name_prefix=name_prefix,
+        name_contains=name_contains,
         mime_type="application/vnd.google-apps.folder" if args.folders_only else None,
     )
 
@@ -530,16 +530,16 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
 def handle_delete(args: argparse.Namespace, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
     date_before, date_after = get_date_filters(args)
-    name_exact, name_prefix = get_name_filters(args)
+    name_exact, name_contains = get_name_filters(args)
 
     has_ids_filter = bool(args.id or args.ids_file)
     has_date_filter = bool(date_before or date_after)
-    has_name_filter = bool(name_exact or name_prefix)
+    has_name_filter = bool(name_exact or name_contains)
     requested_ids_count: int | None = None
     resolved_ids_count: int | None = None
 
     if has_ids_filter and (has_date_filter or has_name_filter):
-        raise UserInputError("Use either ID/--ids-file or API filters (--older/--before/--newer/--after/--name/--prefix), not both.")
+        raise UserInputError("Use either ID/--ids-file or API filters (--older/--before/--newer/--after/--name/--contains), not both.")
 
     items = []
     with error_console.status("[bold yellow]Checking...") as status:
@@ -568,14 +568,14 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
                 created_before=date_before,
                 created_after=date_after,
                 name_exact=name_exact,
-                name_prefix=name_prefix,
+                name_contains=name_contains,
             )
             status.update("[bold yellow]Listing items...[/bold yellow]")
             items = ops.list_files(file_filter=file_filter, on_progress=on_list_progress)
 
         else:
             raise UserInputError(
-                "Please specify ID, --ids-file or API filters (--older/--before/--newer/--after/--name/--prefix)"
+                "Please specify ID, --ids-file or API filters (--older/--before/--newer/--after/--name/--contains)"
             )
 
     if not items:
@@ -653,7 +653,7 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
 def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
     date_before, date_after = get_date_filters(args)
-    name_exact, name_prefix = get_name_filters(args)
+    name_exact, name_contains = get_name_filters(args)
 
     with error_console.status("[bold yellow]Checking...") as status:
 
@@ -674,7 +674,7 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
             created_before=date_before,
             created_after=date_after,
             name_exact=name_exact,
-            name_prefix=name_prefix,
+            name_contains=name_contains,
         )
         items = ops.list_files(file_filter=file_filter, on_progress=on_list_progress)
 

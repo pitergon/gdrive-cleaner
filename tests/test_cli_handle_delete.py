@@ -53,7 +53,7 @@ def test_handle_delete_rejects_ids_with_date_filters():
         force=False,
         csv=False,
         name=None,
-        prefix=None,
+        contains=None,
     )
 
     with pytest.raises(UserInputError):
@@ -73,7 +73,7 @@ def test_handle_delete_requires_any_filter():
         force=False,
         csv=False,
         name=None,
-        prefix=None,
+        contains=None,
     )
 
     with pytest.raises(UserInputError):
@@ -94,7 +94,7 @@ def test_handle_delete_dry_run_does_not_delete():
         force=False,
         csv=False,
         name=None,
-        prefix=None,
+        contains=None,
     )
 
     handle_delete(args, ops)
@@ -116,7 +116,7 @@ def test_handle_delete_rejects_ids_with_name_filters():
         force=False,
         csv=False,
         name="report.txt",
-        prefix=None,
+        contains=None,
     )
 
     with pytest.raises(UserInputError):

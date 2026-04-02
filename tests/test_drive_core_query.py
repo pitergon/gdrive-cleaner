@@ -40,12 +40,12 @@ def test_build_query_full_filter_set():
     assert "trashed = false" in query
 
 
-def test_build_query_name_and_prefix_filters():
+def test_build_query_name_and_contains_filters():
     core = make_core_for_query()
     query = core._build_query(
         FileFilter(
             name_exact="report.csv",
-            name_prefix="report_",
+            name_contains="report_",
         )
     )
 

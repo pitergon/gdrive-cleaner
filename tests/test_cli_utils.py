@@ -44,13 +44,13 @@ def test_get_date_filters_rejects_invalid_range():
         get_date_filters(args)
 
 
-def test_parser_accepts_name_and_prefix_filters():
+def test_parser_accepts_name_and_contains_filters():
     parser = build_parser()
 
     args_name = parser.parse_args(["list", "--name", "Report Q1"])
     assert args_name.name == "Report Q1"
-    assert args_name.prefix is None
+    assert args_name.contains is None
 
-    args_prefix = parser.parse_args(["delete", "--prefix", "Report_"])
-    assert args_prefix.prefix == "Report_"
-    assert args_prefix.name is None
+    args_contains = parser.parse_args(["delete", "--contains", "Report"])
+    assert args_contains.contains == "Report"
+    assert args_contains.name is None
