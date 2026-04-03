@@ -451,3 +451,7 @@ class DriveOperations:
         self, ids: list[str], limit: int | None = None, batch_size: int = 100
     ) -> dict[str, FileItem | None]:
         return self.drive.get_files_metadata_batch(ids=ids, limit=limit, batch_size=batch_size)
+
+    def copy_file(self, file_id: str, new_name: str | None = None, target_id: str | None = None) -> FileItem | None:
+        response = self.drive.copy_file(file_id=file_id, new_name=new_name, target_id=target_id)
+        return self.get_item(response["id"])

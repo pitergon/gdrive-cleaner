@@ -493,8 +493,32 @@ class DriveCore:
             if destination_path.exists():
                 destination_path.unlink()
             if on_progress:
-                on_progress(0, "error")  # Error callback with 0 progress to indicate failure
+                on_progress(
+                    0, "error"
+                )  # Error callback with 0 progress to indicate failure
             raise e
+
+    # -----------------------------------
+    # COPY FILE
+    # -----------------------------------
+
+    def copy_file(self, file_id: str, new_name: str | None = None, target_id: str | None = None,
+                  fields: str = "id,name,parents") -> dict:
+        """
+        Create a copy of a file. Returns response dict (contains at least 'id').
+        :param file_id: ID of source file
+        :param new_name: optional new name for the copy
+        :param target_id: optional parent folder ID to place the copy into
+        :param fields: fields to request back from API
+        """
+        body = {}
+        if new_name:
+            body["name"] = new_name
+        if target_id:
+            body["parents"] = [target_id]
+
+        request = self.service.files().copy(fileId=file_id, body=body, fields=fields)
+        return self._execute(request)
 
     # ----------------------------------
     # CREATE FILE OR FOLDER (TESTING PURPOSES)

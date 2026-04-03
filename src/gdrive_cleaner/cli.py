@@ -142,7 +142,7 @@ def read_ids_file(file_path: Path) -> list[str]:
     return []
 
 
-def confirm_deleting(args, items_count, source_msg, has_folders=False) -> bool:
+def confirm_deleting(args: argparse.Namespace, items_count: int, source_msg: str, has_folders=False) -> bool:
     if args.dry_run:
         return False
 
@@ -164,6 +164,21 @@ def confirm_deleting(args, items_count, source_msg, has_folders=False) -> bool:
         )
 
     confirm = error_console.input("\nAre you sure you want to proceed? (yes/no): ")
+    return confirm.lower() == "yes"
+
+
+def confirm_copying(args: argparse.Namespace, source_msg: str, target_msg: str) -> bool:
+    if args.dry_run:
+        return False
+
+    if args.force:
+        error_console.print(f"WARNING: Force copying {source_msg} to {target_msg}...")
+        return True
+
+    # --force not set, asking for confirmation
+    error_console.print(f"\n[!] READY TO COPY: {source_msg} to {target_msg}")
+
+    confirm = error_console.input(f"\nCopy {source_msg} to {target_msg}? (yes/no): ")
     return confirm.lower() == "yes"
 
 
@@ -432,6 +447,7 @@ def build_parser():
     clear_cmd.add_argument(
         "--csv", action="store_true", help="Always save detailed CSV report without asking"
     )
+
     # fetch
     fetch_cmd = subparsers.add_parser(
         "fetch", parents=[base_parent], help="Download file or folder", formatter_class=formatter
@@ -453,6 +469,17 @@ def build_parser():
         action="store_true",
         help="Enable export of Google Docs/Sheets/Slides to MS Office formats (docx/xlsx/pptx)",
     )
+
+    # copy
+    copy_cmd = subparsers.add_parser(
+        "copy",
+        parents=[base_parent],
+        help="Copy single file to another location (folder). Support only files, not folders",
+        formatter_class=formatter,
+    )
+    copy_cmd.add_argument("id", metavar="<ID>", help="Google Drive ID to copy")
+    copy_cmd.add_argument("-n", "--name", metavar="<NEW_NAME>", help="New file name")
+    copy_cmd.add_argument("-t", "--target_id", metavar="<FOLDER_ID>", help="Target folder ID to copy into")
 
     # quota
     subparsers.add_parser(
@@ -602,25 +629,25 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
         )
 
     has_folders = any(item.mime_type == "application/vnd.google-apps.folder" for item in items)
-    if confirm_deleting(args, len(items), "selected criteria", has_folders=has_folders):
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[red]Deleting...[/red]"),
-            BarColumn(),
-            MofNCompleteColumn(),
-            console=error_console,
-            refresh_per_second=5,
-            disable=not is_tty,
-            transient=True,
-        ) as progress:
-            task = progress.add_task("Cleaning Drive", total=len(items))
-            result = ops.delete_items(
-                items, on_progress=lambda count: progress.advance(task, advance=count)
-            )
-    else:
+    if not confirm_deleting(args, len(items), "selected criteria", has_folders=has_folders):
         error_console.print("Operation cancelled")
         error_console.print("Command 'delete' cancelled.")
         return
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[red]Deleting...[/red]"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        console=error_console,
+        refresh_per_second=5,
+        disable=not is_tty,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Cleaning Drive", total=len(items))
+        result = ops.delete_items(
+            items, on_progress=lambda count: progress.advance(task, advance=count)
+        )
 
     # Summary
     if requested_ids_count is not None and resolved_ids_count is not None:
@@ -695,26 +722,25 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
         return
 
     # 4. Confirmation and deleting with progress
-    if confirm_deleting(args, len(items), f"folder '{folder.name}'", has_folders=has_folders):
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[red]Deleting...[/red]"),
-            BarColumn(),
-            MofNCompleteColumn(),
-            console=error_console,
-            refresh_per_second=5,
-            disable=not is_tty,
-            transient=True,
-        ) as progress:
-            task = progress.add_task("Cleaning Drive", total=len(items))
-            result = ops.delete_items(
-                items, on_progress=lambda count: progress.advance(task, advance=count)
-            )
-
-    else:
+    if not confirm_deleting(args, len(items), f"folder '{folder.name}'", has_folders=has_folders):
         error_console.print("Operation cancelled")
         error_console.print("Command 'clear-folder' cancelled.")
         return
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[red]Deleting...[/red]"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        console=error_console,
+        refresh_per_second=5,
+        disable=not is_tty,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Cleaning Drive", total=len(items))
+        result = ops.delete_items(
+            items, on_progress=lambda count: progress.advance(task, advance=count)
+        )
 
     # 5 Summary
     print_summary(result)
@@ -815,6 +841,53 @@ def handle_quota(args: argparse.Namespace, ops: DriveOperations):
     error_console.print("Command 'quota' completed.")
 
 
+def handle_copy(args: argparse.Namespace, ops: DriveOperations):
+    item = ops.get_item(file_id=args.id)
+    with error_console.status("[bold yellow]Analysing...[/bold yellow]"):
+        if not item:
+            raise UserInputError(f"Item with ID '{args.id}' not found.")
+        if item.mime_type == "application/vnd.google-apps.folder":
+            raise UserInputError("Copying folders is not supported.")
+
+        target = None
+        if args.target_id:
+            target = ops.get_item(file_id=args.target_id)
+            if not target:
+                raise UserInputError(
+                    f"Target folder with ID '{args.target_id}' not found."
+                )
+            if target.mime_type != "application/vnd.google-apps.folder":
+                raise UserInputError(f"Target ID '{args.target_id}' is not a folder.")
+
+    target_id = target.id if target else None
+
+    source_msg = f"{item.name} (ID: {item.id})"
+    new_name = args.name if args.name else item.name
+    target_msg = f"'{new_name}' in folder {target.name} (ID: {target.id})" if target else f"'{new_name}'"
+
+    if args.dry_run:
+        error_console.print(f"Dry run enabled. Would copy {source_msg} to {target_msg}.")
+        error_console.print("Command 'copy' completed: nothing copied.")
+        return
+
+    if not confirm_copying(args, source_msg, target_msg):
+        error_console.print("Copy operation cancelled.")
+        error_console.print("Command 'copy' cancelled.")
+        return
+
+    with error_console.status(f"[bold yellow]Copying {item.name}...[/bold yellow]") as status:
+        new_item = ops.copy_file(
+            file_id=item.id,
+            new_name=args.name,
+            target_id=target_id,
+        )
+
+    if new_item is None:
+        raise UserInputError("Copy finished but copied item metadata is unavailable.")
+
+    error_console.print(f"[green]\u2714[/green] Copied '{item.name}' to {target_msg} with new ID: {new_item.id}")
+    error_console.print("Command 'copy' completed.")
+
 # --- Main ---
 def main():
     if (sys.stdout.encoding or "").lower() != "utf-8":
@@ -847,6 +920,7 @@ def main():
         "delete": handle_delete,
         "clear-folder": handle_clear_folder,
         "fetch": handle_fetch,
+        "copy": handle_copy,
         "quota": handle_quota,
     }
 

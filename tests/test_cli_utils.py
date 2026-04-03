@@ -54,3 +54,10 @@ def test_parser_accepts_name_and_contains_filters():
     args_contains = parser.parse_args(["delete", "--contains", "Report"])
     assert args_contains.contains == "Report"
     assert args_contains.name is None
+
+
+def test_parser_accepts_copy_command_with_required_id():
+    parser = build_parser()
+    args = parser.parse_args(["copy", "file123"])
+    assert args.command == "copy"
+    assert args.id == "file123"
