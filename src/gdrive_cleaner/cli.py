@@ -288,7 +288,7 @@ def save_operation_report(result, report_folder=Path(REPORT_FOLDER)):
         df.to_csv(f, index=False, lineterminator="\n")
 
     error_console.print(
-        f"\n[green]\u2714[/green] Detailed report saved to: [bold]{filename}[/bold]"
+        f"\n[green]\u2714[/green] Detailed report saved to: '{filename}'"
     )
 
 
@@ -672,8 +672,6 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
         except Exception as e:
             error_console.print(f"[yellow]\u26A0 Warning: Could not save CSV report:[/yellow] {e}")
 
-
-
     error_console.print("Command 'delete' completed.")
 
 
@@ -756,7 +754,7 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
         try:
             save_operation_report(result)
             error_console.print(
-                f"[green]\u2714[/green] CSV report saved for folder: {folder.name}"
+                f"[green]\u2714[/green] CSV report saved for folder: '{folder.name}'"
             )
         except Exception as e:
             error_console.print(f"[yellow]\u26A0 Warning: Could not save CSV report:[/yellow] {e}")
@@ -766,7 +764,7 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
 
 def handle_fetch(args, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
-    with error_console.status(f"[bold yellow]Fetching metadata for {args.id}...") as status:
+    with error_console.status(f"[bold yellow]Fetching metadata for {args.id}..."):
         item = ops.get_item(file_id=args.id)
 
     if not item:
@@ -794,20 +792,35 @@ def handle_fetch(args, ops: DriveOperations):
                 return
 
             if status == "progress":
+                task_total = total if total and total > 0 else 1
                 if file_id not in tasks:
                     tasks[file_id] = progress.add_task(
-                        description=f"[cyan]Fetching {name}", total=total
+                        description=f"[cyan]Fetching {name}[/cyan]", total=task_total
                     )
-                progress.update(tasks[file_id], completed=completed)
+                progress.update(tasks[file_id], completed=min(completed, task_total))
 
             elif status == "finished":
-                if file_id in tasks:
-                    progress.remove_task(tasks[file_id])
+                task_total = total if total and total > 0 else max(completed, 1)
+                task_id = tasks.get(file_id)
+                if task_id is None:
+                    task_id = progress.add_task(
+                        description=f"[cyan]Fetching {name}[/cyan]", total=task_total
+                    )
+                progress.update(task_id, completed=task_total)
+                tasks.pop(file_id, None)
+                try:
+                    progress.remove_task(task_id)
+                except KeyError:
+                    pass
                 progress.console.print(f"[green]\u2714[/green] Success | {name}")
 
             elif status == "error":
-                if file_id in tasks:
-                    progress.remove_task(tasks[file_id])
+                task_id = tasks.pop(file_id, None)
+                if task_id is not None:
+                    try:
+                        progress.remove_task(task_id)
+                    except KeyError:
+                        pass
                 progress.console.print(f"[red]\u2718[/red] Failed  | {name}")
 
         ops.fetch_item(
@@ -842,8 +855,9 @@ def handle_quota(args: argparse.Namespace, ops: DriveOperations):
 
 
 def handle_copy(args: argparse.Namespace, ops: DriveOperations):
-    item = ops.get_item(file_id=args.id)
+
     with error_console.status("[bold yellow]Analysing...[/bold yellow]"):
+        item = ops.get_item(file_id=args.id)
         if not item:
             raise UserInputError(f"Item with ID '{args.id}' not found.")
         if item.mime_type == "application/vnd.google-apps.folder":
@@ -861,9 +875,9 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
 
     target_id = target.id if target else None
 
-    source_msg = f"{item.name} (ID: {item.id})"
-    new_name = args.name if args.name else item.name
-    target_msg = f"'{new_name}' in folder {target.name} (ID: {target.id})" if target else f"'{new_name}'"
+    source_msg = f"'{item.name}' (ID: {item.id})"
+    new_name = args.name if args.name else f"Copy of {item.name}"
+    target_msg = f"'{new_name}' in folder '{target.name}' (ID: {target.id})" if target else f"'{new_name}'"
 
     if args.dry_run:
         error_console.print(f"Dry run enabled. Would copy {source_msg} to {target_msg}.")
@@ -875,9 +889,10 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
         error_console.print("Command 'copy' cancelled.")
         return
 
-    with error_console.status(f"[bold yellow]Copying {item.name}...[/bold yellow]") as status:
+    with error_console.status(f"[bold yellow]Copying {item.name}...[/bold yellow]"):
         new_item = ops.copy_file(
             file_id=item.id,
+            # new_name=new_name,
             new_name=args.name,
             target_id=target_id,
         )
@@ -885,8 +900,10 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
     if new_item is None:
         raise UserInputError("Copy finished but copied item metadata is unavailable.")
 
+    target_msg = f"'{new_item.name}' in folder '{target.name}' (ID: {target.id})" if target else f"'{new_item.name}'"
     error_console.print(f"[green]\u2714[/green] Copied '{item.name}' to {target_msg} with new ID: {new_item.id}")
     error_console.print("Command 'copy' completed.")
+
 
 # --- Main ---
 def main():

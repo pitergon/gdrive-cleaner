@@ -406,10 +406,16 @@ class DriveOperations:
         self.logger.debug(f"Downloading to temp: {temp_path}")
 
         try:
+            # Ensure UI can create a progress task even when backend emits only "finished".
+            if on_progress:
+                initial_total = item.size if item.size and item.size > 0 else 1
+                on_progress(item.id, item.name, 0, initial_total, "progress")
+
             # Wrapper for UI callback
             def cb_wrapper(bytes_downloaded, status):
                 if on_progress:
-                    on_progress(item.id, item.name, bytes_downloaded, item.size, status)
+                    total = item.size if item.size and item.size > 0 else max(bytes_downloaded, 1)
+                    on_progress(item.id, item.name, bytes_downloaded, total, status)
 
             if is_google_doc:
                 export_mime, _ = mapping[item.mime_type]

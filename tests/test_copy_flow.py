@@ -113,7 +113,7 @@ def test_handle_copy_success_calls_ops_and_prints_completion(monkeypatch, capsys
     captured = capsys.readouterr()
 
     assert ops.copy_calls == [("src", "new-name.txt", "dst-folder")]
-    assert "Copied to 'new-name.txt' in folder Dest (ID: dst-folder) with new ID:" in captured.err
+    assert "Copied 'source.txt' to 'new-name.txt' in folder 'Dest' (ID: dst-folder) with" in captured.err
     assert "copied-id" in captured.err
     assert "Command 'copy' completed." in captured.err
 

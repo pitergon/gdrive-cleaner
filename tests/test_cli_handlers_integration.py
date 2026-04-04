@@ -2,6 +2,7 @@ from argparse import Namespace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from gdrive_cleaner import cli as cli_module
 from gdrive_cleaner.cli import handle_delete, handle_fetch, handle_list
 from gdrive_cleaner.drive_core import FileItem, OperationResult
 
@@ -150,3 +151,66 @@ def test_handle_fetch_reports_done_and_completion(capsys, tmp_path):
     assert "DONE: report.txt" in captured.err
     assert "Command 'fetch' completed." in captured.err
 
+
+def test_handle_fetch_tty_does_not_crash_on_finished_then_error(monkeypatch, tmp_path):
+    class DummyStdout:
+        def isatty(self):
+            return True
+
+    printed = []
+
+    class FakeConsole:
+        def print(self, message):
+            printed.append(str(message))
+
+    class FakeProgress:
+        def __init__(self, *args, **kwargs):
+            self.console = FakeConsole()
+            self._tasks = {}
+            self._next = 1
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def add_task(self, description, total):
+            task_id = self._next
+            self._next += 1
+            self._tasks[task_id] = {"description": description, "total": total, "completed": 0}
+            return task_id
+
+        def update(self, task_id, completed):
+            if task_id not in self._tasks:
+                raise KeyError(task_id)
+            self._tasks[task_id]["completed"] = completed
+
+        def remove_task(self, task_id):
+            if task_id not in self._tasks:
+                raise KeyError(task_id)
+            del self._tasks[task_id]
+
+    class FetchOpsGlitchMock(FetchOpsMock):
+        def fetch_item(self, item_or_id, output_path, recursive, force, export, dry_run, on_progress):
+            on_progress(item_or_id.id, item_or_id.name, 0, 0, "finished")
+            on_progress(item_or_id.id, item_or_id.name, 0, 0, "error")
+
+    item = make_item("f-2", name="glitch.docx")
+    ops = FetchOpsGlitchMock(item)
+    args = Namespace(
+        id="f-2",
+        path=str(tmp_path),
+        recursive=False,
+        force=False,
+        export=True,
+        dry_run=False,
+    )
+
+    monkeypatch.setattr(cli_module, "Progress", FakeProgress)
+    monkeypatch.setattr(cli_module.sys, "stdout", DummyStdout())
+
+    handle_fetch(args, ops)
+
+    assert any("Success" in msg for msg in printed)
+    assert any("Failed" in msg for msg in printed)

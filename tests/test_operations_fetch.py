@@ -33,6 +33,15 @@ class DummyDrive:
             on_progress(0, "finished")
 
 
+class FinishOnlyExportDrive(DummyDrive):
+    def export_media(self, file_id, mime_type, destination_path, on_progress=None):
+        path = Path(destination_path)
+        self.export_calls.append((mime_type, path))
+        path.write_bytes(b"docx-content")
+        if on_progress:
+            on_progress(0, "finished")
+
+
 def make_file_item(file_id: str, name: str, size: int, mime_type: str) -> FileItem:
     return FileItem(
         id=file_id,
@@ -137,3 +146,30 @@ def test_download_item_exports_google_doc_with_extension(tmp_path):
     assert len(drive.export_calls) == 1
     assert (tmp_path / "DocName.docx").exists()
 
+
+def test_download_item_emits_initial_progress_for_export_when_backend_only_finishes(tmp_path):
+    drive = FinishOnlyExportDrive()
+    ops = DriveOperations(drive)
+    item = make_file_item(
+        "doc3",
+        "DocName",
+        0,
+        "application/vnd.google-apps.document",
+    )
+    events = []
+
+    def on_progress(file_id, name, completed, total, status):
+        events.append((status, completed, total))
+
+    ops._download_item(
+        item=item,
+        target_dir=tmp_path,
+        force=False,
+        export=True,
+        mapping=GOOGLE_DOC_MAPPING,
+        dry_run=False,
+        on_progress=on_progress,
+    )
+
+    assert events[0] == ("progress", 0, 1)
+    assert events[-1][0] == "finished"
