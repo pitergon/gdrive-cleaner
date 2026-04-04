@@ -1,16 +1,18 @@
-# GDrive Cleaner CLI
+# Service Account GDrive Cleaner CLI
 
 Command-line utility for Google Drive inventory, cleanup, export, and download workflows using a Google Service Account.
 
-## Important Disclaimer
+## Why This Tool Exists
 
-**Use this tool at your own risk.**
+Google Drive used by a Service Account usually has no normal GUI workflow for routine cleanup.
+In real projects, many scripts write data to the same Drive, and not all of them remove temporary outputs.
+Sooner or later, storage fills up and jobs fail at the worst possible time.
 
-This project is provided **"AS IS"**, without warranties of any kind (express or implied), including but not limited to merchantability, fitness for a particular purpose, and non-infringement.
-
-By using this utility, you accept full responsibility for all actions and outcomes, including accidental or irreversible data loss, deletion of production data, permission-side effects, and operational downtime. The authors and contributors are **not liable** for any direct or indirect damage resulting from usage.
-
-Always run destructive operations with `--dry-run` first, verify IDs, and test in a non-production Drive before using on real data.
+This CLI is built to solve that operational pain:
+- inspect what is taking space;
+- clean up old or unnecessary files safely (`--dry-run` + confirmation);
+- fetch/copy/export data when needed;
+- keep automation running without emergency manual cleanup.
 
 ## What the Tool Does
 
@@ -346,3 +348,14 @@ gdrive-cleaner quota
 - Invalid date format -> parser error (`YYYY-MM-DD` required).
 - Invalid date range or incompatible filter combination -> command abort.
 - Unhandled runtime errors -> non-zero exit with concise message (details available via verbose logging).
+
+
+## Important Disclaimer
+
+**Use this tool at your own risk.**
+
+This project is provided **"AS IS"**, without warranties of any kind (express or implied), including but not limited to merchantability, fitness for a particular purpose, and non-infringement.
+
+By using this utility, you accept full responsibility for all actions and outcomes, including accidental or irreversible data loss, deletion of production data, permission-side effects, and operational downtime. The authors and contributors are **not liable** for any direct or indirect damage resulting from usage.
+
+Always run destructive operations with `--dry-run` first, verify IDs, and test in a non-production Drive before using on real data.
