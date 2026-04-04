@@ -191,7 +191,29 @@ Download/collision mechanics:
 - With `--force`, existing destination file can be replaced (download is written to `*.tmp` then moved to final path).
 - Google-native files are skipped unless `-e/--export` is enabled.
 
-### 5) `quota`
+### 5) `copy`
+
+Usage:
+
+```bash
+gdrive-cleaner copy <ID> [-n NEW_NAME] [-t FOLDER_ID] [--force] [-d]
+```
+
+Options:
+
+- `id` (required): source file ID.
+- `-n, --name <NEW_NAME>`: optional new file name for the copied item.
+- `-t, --target_id <FOLDER_ID>`: optional target folder ID.
+- `-d, --dry-run`: preview copy action.
+- `--force`: skip confirmation prompt.
+
+Behavior:
+
+- Copies only files; copying folders is not supported.
+- Without `--force`, asks explicit `yes` confirmation.
+- In `--dry-run`, prints what would be copied and does not call Drive API copy.
+
+### 6) `quota`
 
 Usage:
 
@@ -310,6 +332,9 @@ gdrive-cleaner clear-folder <FOLDER_ID> --before 2025-01-01 --dry-run
 
 # Recursively fetch a folder and export Google docs
 gdrive-cleaner fetch <FOLDER_ID> -r -e -p ./backup
+
+# Copy file with a new name into target folder
+gdrive-cleaner copy <FILE_ID> -n "Copy of report.xlsx" -t <TARGET_FOLDER_ID>
 
 # Show quota
 gdrive-cleaner quota
