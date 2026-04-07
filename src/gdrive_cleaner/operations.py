@@ -1,5 +1,4 @@
 import logging
-import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -337,7 +336,8 @@ class DriveOperations:
             target_dir = output_path / folder_name
 
             if dry_run:
-                print(f"[DRY-RUN] Would create directory: {target_dir}", file=sys.stderr)
+                if on_progress:
+                    on_progress(item.id, item.name, 0, 0, "dry_run")
             else:
                 target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -398,7 +398,9 @@ class DriveOperations:
         # 3. Dry-run
         if dry_run:
             action = "[DRY-RUN] Would export" if is_google_doc else "[DRY-RUN] Would download"
-            self.logger.info(f"{action}: {item.name} -> {final_path} ({convert_size(item.size)})")
+            self.logger.debug(f"{action}: {item.name} -> {final_path} ({convert_size(item.size)})")
+            if on_progress:
+                on_progress(item.id, item.name, 0, item.size, "dry_run")
             return
 
         # 4. Prepare temp file

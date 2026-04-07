@@ -783,12 +783,14 @@ def handle_fetch(args, ops: DriveOperations):
         tasks = {}
 
         def on_progress(file_id: str, name: str, completed: int, total: int, status: str):
-            """Callback for fetch_item to update progress. Status can be 'progress', 'finished' or 'error'."""
+            """Callback for fetch_item to update progress. Status can be 'progress', 'finished', 'error', 'dry_run'."""
             if not is_tty:
                 if status == "finished":
                     error_console.print(f"DONE: {name}")
                 elif status == "error":
                     error_console.print(f"FAIL: {name}")
+                elif status == "dry_run":
+                    error_console.print(f"DRY: {name}")
                 return
 
             if status == "progress":
@@ -822,6 +824,9 @@ def handle_fetch(args, ops: DriveOperations):
                     except KeyError:
                         pass
                 progress.console.print(f"[red]\u2718[/red] Failed  | {name}")
+
+            elif status == "dry_run":
+                progress.console.print(f"[yellow]~[/yellow] Dry-run | {name}")
 
         ops.fetch_item(
             item_or_id=item,
