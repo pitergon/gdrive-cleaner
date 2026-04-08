@@ -69,6 +69,24 @@ def valid_date(date_str):
         ) from e
 
 
+def resolve_output_path(
+    raw_path: str,
+    *,
+    base_folder: str,
+    auto_filename: str | None = None,
+) -> Path:
+    if raw_path == "AUTO":
+        if not auto_filename:
+            raise UserInputError("AUTO path requested, but no auto filename provided.")
+        path = Path(auto_filename).expanduser()
+    else:
+        path = Path(raw_path).expanduser()
+
+    if not path.is_absolute():
+        path = Path(base_folder) / path
+    return path.resolve()
+
+
 # --- UI & Helpers ---
 
 
@@ -183,7 +201,7 @@ def confirm_copying(args: argparse.Namespace, source_msg: str, target_msg: str) 
 
 
 def confirm_saving_report() -> bool:
-    confirm = error_console.input("\nSave detailed CSV report? (yes/no): ")
+    confirm = error_console.input("\nSave detailed CSV report to Reports folder? (yes/no): ")
     return confirm.lower() == "yes"
 
 
@@ -260,11 +278,11 @@ def smart_print(items: list[FileItem], console_limit=CONSOLE_LIMIT):
     pydoc.pager("\n".join(lines))
 
 
-def save_operation_report(result, report_folder=Path(REPORT_FOLDER)):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"deleting_report_{timestamp}.csv".replace(" ", "_")
-    filepath = report_folder / filename
-    filepath.parent.mkdir(parents=True, exist_ok=True)
+def save_operation_report(
+    result: OperationResult,
+    output_path: Path,
+):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     disclaimer = (
         "Note: Folders are deleted with all their content. Sub-items are not listed individually.\n"
@@ -283,13 +301,11 @@ def save_operation_report(result, report_folder=Path(REPORT_FOLDER)):
     ]
 
     df = pd.DataFrame(data)
-    with open(filepath, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(disclaimer)
         df.to_csv(f, index=False, lineterminator="\n")
 
-    error_console.print(
-        f"\n[green]\u2714[/green] Detailed report saved to: '{filename}'"
-    )
+    error_console.print(f"\n[green]\u2714[/green] Detailed report saved to: '{output_path}'")
 
 
 def build_parser():
@@ -318,7 +334,6 @@ def build_parser():
     base_parent = argparse.ArgumentParser(add_help=False, formatter_class=formatter)
 
     base_parent.add_argument(
-        "-s",
         "--sa",
         type=valid_path,
         metavar="<JSON_FILE>",
@@ -431,7 +446,13 @@ def build_parser():
         help="Path to file (.csv/.xlsx) with IDs",
     )
     delete_cmd.add_argument(
-        "--csv", action="store_true", help="Always save detailed CSV report without asking"
+        "--csv",
+        type=valid_ext(".csv"),
+        nargs="?",
+        const="AUTO",
+        default=None,
+        metavar="<PATH>",
+        help="Save detailed CSV report (optional path; relative path is under reports/)",
     )
 
     # clear-folder
@@ -445,7 +466,13 @@ def build_parser():
         "folder_id", metavar="<FOLDER_ID>", help="Google Drive Folder ID to clear"
     )
     clear_cmd.add_argument(
-        "--csv", action="store_true", help="Always save detailed CSV report without asking"
+        "--csv",
+        type=valid_ext(".csv"),
+        nargs="?",
+        const="AUTO",
+        default=None,
+        metavar="<PATH>",
+        help="Save detailed CSV report (optional path; relative path is under reports/)",
     )
 
     # fetch
@@ -457,8 +484,8 @@ def build_parser():
         "-p",
         "--path",
         metavar="<PATH>",
-        default=DOWNLOAD_FOLDER,
-        help="Output path (default: current dir)",
+        default=None,
+        help="Output path (default: download/; relative paths are under download/)",
     )
     fetch_cmd.add_argument(
         "-r", "--recursive", action="store_true", help="Download folder recursively"
@@ -520,8 +547,11 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             # with error_console.status("[bold yellow]Export file list ...") as status:
             if args.csv:
-                fname = f"gdrive_analysis_{timestamp}.csv" if args.csv == "AUTO" else args.csv
-                output_csv = (Path(EXPORT_FOLDER) / fname).resolve()
+                output_csv = resolve_output_path(
+                    args.csv,
+                    base_folder=EXPORT_FOLDER,
+                    auto_filename=f"gdrive_analysis_{timestamp}.csv",
+                )
                 ops.export_to_csv(
                     output_path=output_csv,
                     file_filter=file_filter,
@@ -531,8 +561,11 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
                 )
                 exported_paths.append(output_csv)
             if args.xlsx:
-                fname = f"gdrive_analysis_{timestamp}.xlsx" if args.xlsx == "AUTO" else args.xlsx
-                output_xlsx = (Path(EXPORT_FOLDER) / fname).resolve()
+                output_xlsx = resolve_output_path(
+                    args.xlsx,
+                    base_folder=EXPORT_FOLDER,
+                    auto_filename=f"gdrive_analysis_{timestamp}.xlsx",
+                )
                 ops.export_to_xlsx(
                     output_path=output_xlsx,
                     file_filter=file_filter,
@@ -660,14 +693,25 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
 
     # 6. Asking for save report
     should_save = False
+    report_path: Path | None = None
     if args.csv:
         should_save = True
+        report_path = resolve_output_path(
+            args.csv,
+            base_folder=REPORT_FOLDER,
+            auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        )
     elif is_tty and confirm_saving_report():
         should_save = True
+        report_path = resolve_output_path(
+            "AUTO",
+            base_folder=REPORT_FOLDER,
+            auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        )
 
-    if should_save:
+    if should_save and report_path is not None:
         try:
-            save_operation_report(result)
+            save_operation_report(result, output_path=report_path)
             error_console.print("[green]\u2714[/green] CSV report saved")
         except Exception as e:
             error_console.print(f"[yellow]\u26A0 Warning: Could not save CSV report:[/yellow] {e}")
@@ -745,14 +789,25 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
 
     # 6. Asking for save report
     should_save = False
+    report_path: Path | None = None
     if args.csv:
         should_save = True
+        report_path = resolve_output_path(
+            args.csv,
+            base_folder=REPORT_FOLDER,
+            auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        )
     elif is_tty and confirm_saving_report():
         should_save = True
+        report_path = resolve_output_path(
+            "AUTO",
+            base_folder=REPORT_FOLDER,
+            auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        )
 
-    if should_save:
+    if should_save and report_path is not None:
         try:
-            save_operation_report(result)
+            save_operation_report(result, output_path=report_path)
             error_console.print(
                 f"[green]\u2714[/green] CSV report saved for folder: '{folder.name}'"
             )
@@ -828,9 +883,14 @@ def handle_fetch(args, ops: DriveOperations):
             elif status == "dry_run":
                 progress.console.print(f"[yellow]~[/yellow] Dry-run | {name}")
 
+        output_path = (
+            Path(DOWNLOAD_FOLDER).resolve()
+            if args.path is None
+            else resolve_output_path(args.path, base_folder=DOWNLOAD_FOLDER)
+        )
         ops.fetch_item(
             item_or_id=item,
-            output_path=Path(args.path),
+            output_path=output_path,
             recursive=args.recursive,
             force=args.force,
             export=args.export,

@@ -1,4 +1,27 @@
-from gdrive_cleaner.drive_core import DriveCore
+from datetime import datetime, timezone
+from typing import Any, cast
+from unittest.mock import Mock
+
+from gdrive_cleaner.drive_core import DriveCore, FileItem
+
+
+def as_mock(obj: Any) -> Mock:
+    return cast(Mock, obj)  # type: ignore
+
+
+def build_item(
+    file_id: str, name: str = "name", mime_type: str = "text/plain", size: int = 10
+) -> FileItem:
+    return FileItem(
+        id=file_id,
+        name=name,
+        size=size,
+        mime_type=mime_type,
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        modified_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        parents=[],
+        owner=None,
+    )
 
 
 def setup_test_structure(

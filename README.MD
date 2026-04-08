@@ -78,7 +78,7 @@ If the resolved file does not exist, command exits with error.
 
 Available for all commands:
 
-- `-s, --sa <JSON_FILE>`: service account key path.
+- `--sa <JSON_FILE>`: service account key path.
 - `-v`, `-vv`: logging verbosity (`-v` = INFO, `-vv` = DEBUG).
 - `-d, --dry-run`: preview mode.
 - `--force`: skip confirmation prompts; for `fetch` it also changes collision behavior.
@@ -118,7 +118,7 @@ Notes:
 Usage:
 
 ```bash
-gdrive-cleaner delete [ID] [-i IDS_FILE] [time-filters] [--force] [-d] [--csv]
+gdrive-cleaner delete [ID] [-i IDS_FILE] [time-filters] [--force] [-d] [--csv [PATH]]
 ```
 
 Input source:
@@ -131,7 +131,8 @@ Important parser/validation rules:
 
 - `id` and `--ids-file` are mutually exclusive.
 - Mixing ID source (`id`/`--ids-file`) with API filters (`--older/--before/--newer/--after/--name/--contains`) is rejected at runtime.
-- `--csv` is independent from input source and can be combined with `id`, `--ids-file`, or API filters.
+- `--csv [PATH]` is independent from input source and can be combined with `id`, `--ids-file`, or API filters.
+- If `PATH` is relative, it is resolved under `reports/`; absolute paths are used as-is.
 
 Behavior:
 
@@ -145,7 +146,7 @@ Behavior:
 Usage:
 
 ```bash
-gdrive-cleaner clear-folder <FOLDER_ID> [time-filters] [--force] [-d] [--csv]
+gdrive-cleaner clear-folder <FOLDER_ID> [time-filters] [--force] [-d] [--csv [PATH]]
 ```
 
 Options:
@@ -153,7 +154,7 @@ Options:
 - `folder_id` (required): target folder ID.
 - Time filters: `--older`, `--before`, `--newer`, `--after`.
 - Name filters: `--name`, `--contains`.
-- `--csv`: always save detailed CSV report without prompt.
+- `--csv [PATH]`: save detailed CSV report without prompt (relative path -> `reports/`, absolute path as-is).
 
 Behavior:
 
@@ -172,7 +173,7 @@ gdrive-cleaner fetch <ID> [-p PATH] [-r] [-e] [--force] [-d]
 Options:
 
 - `id` (required): file or folder ID.
-- `-p, --path <PATH>`: destination root (default `download`).
+- `-p, --path <PATH>`: destination root. Relative paths are resolved under `download/`; absolute paths are used as-is. Default is `download/`.
 - `-r, --recursive`: recurse into subfolders.
 - `-e, --export`: export Google Docs formats to Office files.
 - `-d, --dry-run`: preview actions.
@@ -232,10 +233,12 @@ Outputs: Used, Free, Total.
 - Purpose: snapshot of discovered items.
 - Contains file/folder metadata (ID, name, owner, size, mime, timestamps, parent info, etc.).
 - XLSX includes additional sheets (`All Items`, `Files`, `Folders`, `Summary`).
+- Relative export paths are resolved under `export/`; absolute paths are used as-is.
 
-### Operation report (`delete --csv`, `clear-folder --csv`, or interactive prompt)
+### Operation report (`delete --csv [PATH]`, `clear-folder --csv [PATH]`, or interactive prompt)
 
-- File name: `report_<folder_name?>_<timestamp>.csv` in current working directory.
+- Default file name: `deleting_report_<timestamp>.csv` in `reports/`.
+- If `PATH` is provided and relative, it is resolved under `reports/`; absolute paths are used as-is.
 - Contains one record per processed top-level deletion item with columns:
   - `ID`, `Name`, `Type`, `Size`, `Status`, `Error`.
 - First line is a disclaimer:
