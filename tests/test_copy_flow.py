@@ -1,7 +1,9 @@
 from argparse import Namespace
 from datetime import datetime, timezone
+import io
 
 import pytest
+from rich.console import Console
 
 from gdrive_cleaner import cli
 from gdrive_cleaner.drive_core import FileItem
@@ -74,48 +76,59 @@ class OpsCopyMock:
         return self.copied
 
 
-def test_handle_copy_cancelled_on_negative_confirm(monkeypatch, capsys):
+def _build_error_console():
+    output = io.StringIO()
+    return Console(file=output, force_terminal=False), output
+
+
+def test_handle_copy_cancelled_on_negative_confirm(monkeypatch):
     source = make_item("src", "source.txt")
     ops = OpsCopyMock(source=source)
+    console, output = _build_error_console()
     args = Namespace(id="src", name=None, target_id=None, force=False, dry_run=False)
     monkeypatch.setattr(cli, "confirm_copying", lambda *a, **k: False)
+    monkeypatch.setattr(cli, "error_console", console)
 
     cli.handle_copy(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert ops.copy_calls == []
-    assert "Copy operation cancelled." in captured.err
-    assert "Command 'copy' cancelled." in captured.err
+    assert "Copy operation cancelled." in text
+    assert "Command 'copy' cancelled." in text
 
 
-def test_handle_copy_dry_run_does_not_call_copy(capsys):
+def test_handle_copy_dry_run_does_not_call_copy(monkeypatch):
     source = make_item("src", "source.txt")
     ops = OpsCopyMock(source=source)
+    console, output = _build_error_console()
     args = Namespace(id="src", name="copy.txt", target_id=None, force=False, dry_run=True)
+    monkeypatch.setattr(cli, "error_console", console)
 
     cli.handle_copy(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert ops.copy_calls == []
-    assert "Dry run enabled. Would copy" in captured.err
-    assert "Command 'copy' completed: nothing copied." in captured.err
+    assert "Dry run enabled. Would copy" in text
+    assert "Command 'copy' completed: nothing copied." in text
 
 
-def test_handle_copy_success_calls_ops_and_prints_completion(monkeypatch, capsys):
+def test_handle_copy_success_calls_ops_and_prints_completion(monkeypatch):
     source = make_item("src", "source.txt")
     target = make_item("dst-folder", "Dest", mime_type="application/vnd.google-apps.folder")
     copied = make_item("copied-id", "new-name.txt")
     ops = OpsCopyMock(source=source, target=target, copied=copied)
+    console, output = _build_error_console()
     args = Namespace(id="src", name="new-name.txt", target_id="dst-folder", force=False, dry_run=False)
     monkeypatch.setattr(cli, "confirm_copying", lambda *a, **k: True)
+    monkeypatch.setattr(cli, "error_console", console)
 
     cli.handle_copy(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert ops.copy_calls == [("src", "new-name.txt", "dst-folder")]
-    assert "Copied 'source.txt' to 'new-name.txt' in folder 'Dest' (ID: dst-folder) with" in captured.err
-    assert "copied-id" in captured.err
-    assert "Command 'copy' completed." in captured.err
+    assert "Copied 'source.txt' to 'new-name.txt' in folder 'Dest' (ID: dst-folder) with" in text
+    assert "copied-id" in text
+    assert "Command 'copy' completed." in text
 
 
 def test_handle_copy_raises_when_new_item_is_none(monkeypatch):

@@ -348,7 +348,7 @@ def build_parser():
     )
     base_parent.add_argument(
         "--force", action="store_true", help="Don't ask confirmation"
-    )  # hidden alias for -vv
+    )
 
     main_parser = argparse.ArgumentParser(
         prog="gdrive-cleaner",
@@ -506,7 +506,7 @@ def build_parser():
     )
     copy_cmd.add_argument("id", metavar="<ID>", help="Google Drive ID to copy")
     copy_cmd.add_argument("-n", "--name", metavar="<NEW_NAME>", help="New file name")
-    copy_cmd.add_argument("-t", "--target_id", metavar="<FOLDER_ID>", help="Target folder ID to copy into")
+    copy_cmd.add_argument("-t", "--target-id", metavar="<FOLDER_ID>", help="Target folder ID to copy into")
 
     # quota
     subparsers.add_parser(
@@ -516,8 +516,6 @@ def build_parser():
 
 
 # --- Command Handlers ---
-
-
 def handle_list(args: argparse.Namespace, ops: DriveOperations):
     date_before, date_after = get_date_filters(args)
     name_exact, name_contains = get_name_filters(args)
@@ -981,8 +979,8 @@ def main():
         sys.exit(1)
     args = parser.parse_args()
 
-    # Logging setup
-    log_level = {0: logging.WARNING, 1: logging.INFO}.get(args.verbose, logging.DEBUG)
+    # Logging setup all values above 2 (-vvv) are treated as DEBUG for simplicity
+    log_level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(args.verbose, logging.DEBUG)
     setup_basic_logging(log_level)
 
     # Core initialization

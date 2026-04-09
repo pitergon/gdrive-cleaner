@@ -32,6 +32,9 @@ class DummyDrive:
             on_progress(len(b"docx-content"), "progress")
             on_progress(0, "finished")
 
+    def list_files(self, file_filter):
+        return []
+
 
 class FinishOnlyExportDrive(DummyDrive):
     def export_media(self, file_id, mime_type, destination_path, on_progress=None):
@@ -173,3 +176,26 @@ def test_download_item_emits_initial_progress_for_export_when_backend_only_finis
 
     assert events[0] == ("progress", 0, 1)
     assert events[-1][0] == "finished"
+
+
+def test_fetch_item_dry_run_folder_emits_dry_run_status_and_does_not_create_dir(tmp_path):
+    drive = DummyDrive()
+    ops = DriveOperations(drive)
+    folder = make_file_item("folder1", "my-folder", 0, "application/vnd.google-apps.folder")
+    events = []
+
+    def on_progress(file_id, name, completed, total, status):
+        events.append((file_id, name, status))
+
+    ops.fetch_item(
+        item_or_id=folder,
+        output_path=tmp_path,
+        recursive=False,
+        force=False,
+        export=False,
+        dry_run=True,
+        on_progress=on_progress,
+    )
+
+    assert events == [("folder1", "my-folder", "dry_run")]
+    assert not (tmp_path / "my-folder").exists()

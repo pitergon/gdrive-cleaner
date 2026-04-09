@@ -1,6 +1,9 @@
 from argparse import Namespace
 from datetime import datetime, timezone
+import io
 from pathlib import Path
+
+from rich.console import Console
 
 from gdrive_cleaner import cli as cli_module
 from gdrive_cleaner.cli import handle_delete, handle_fetch, handle_list
@@ -86,8 +89,15 @@ class FetchOpsMock:
         on_progress(item_or_id.id, item_or_id.name, item_or_id.size, item_or_id.size, "finished")
 
 
-def test_handle_list_export_csv_reports_to_stderr(capsys):
+def build_error_console():
+    output = io.StringIO()
+    return Console(file=output, force_terminal=False), output
+
+
+def test_handle_list_export_csv_reports_to_stderr(monkeypatch):
     ops = ListOpsMock()
+    console, output = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
     args = Namespace(
         id=None,
         older=None,
@@ -102,15 +112,19 @@ def test_handle_list_export_csv_reports_to_stderr(capsys):
     )
 
     handle_list(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert len(ops.export_csv_calls) == 1
-    assert "Command 'list' completed. Exported:" in captured.err
-    assert str(Path("export")) in captured.err
+    assert "Command 'list' completed. Exported:" in text
+    assert str(Path("export")) in text
 
 
-def test_handle_delete_writes_machine_summary_to_stdout(capsys):
+def test_handle_delete_writes_machine_summary_to_stdout(monkeypatch):
     ops = DeleteOpsMock(make_item("id-1"))
+    console, output = build_error_console()
+    summary_calls = []
+    monkeypatch.setattr(cli_module, "error_console", console)
+    monkeypatch.setattr(cli_module, "print_summary", lambda result: summary_calls.append(result))
     args = Namespace(
         id="id-1",
         ids_file=None,
@@ -120,20 +134,23 @@ def test_handle_delete_writes_machine_summary_to_stdout(capsys):
         after=None,
         dry_run=False,
         force=True,
-        csv=False,
+        csv=None,
     )
 
     handle_delete(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert ops.delete_called == 1
-    assert "total=1 success=1 failed=0 critical=0" in captured.out
-    assert "Command 'delete' completed." in captured.err
+    assert len(summary_calls) == 1
+    assert summary_calls[0].total == 1
+    assert "Command 'delete' completed." in text
 
 
-def test_handle_fetch_reports_done_and_completion(capsys, tmp_path):
+def test_handle_fetch_reports_done_and_completion(monkeypatch, tmp_path):
     item = make_item("f-1", name="report.txt")
     ops = FetchOpsMock(item)
+    console, output = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
     args = Namespace(
         id="f-1",
         path=str(tmp_path),
@@ -144,12 +161,106 @@ def test_handle_fetch_reports_done_and_completion(capsys, tmp_path):
     )
 
     handle_fetch(args, ops)
-    captured = capsys.readouterr()
+    text = output.getvalue()
 
     assert ops.last_call is not None
     assert ops.last_call["output_path"] == tmp_path
-    assert "DONE: report.txt" in captured.err
-    assert "Command 'fetch' completed." in captured.err
+    assert "DONE: report.txt" in text
+    assert "Command 'fetch' completed." in text
+
+
+def test_handle_list_relative_csv_path_resolved_under_export(monkeypatch):
+    ops = ListOpsMock()
+    console, _ = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
+    args = Namespace(
+        id=None,
+        older=None,
+        before=None,
+        newer=None,
+        after=None,
+        csv="nested/report.csv",
+        xlsx=None,
+        folders_only=False,
+        resolve_parents=False,
+        limit=None,
+    )
+
+    handle_list(args, ops)
+
+    output_path = ops.export_csv_calls[0]["output_path"]
+    assert str(output_path).endswith(str(Path("export") / "nested" / "report.csv"))
+
+
+def test_handle_fetch_relative_path_resolved_under_download(monkeypatch):
+    item = make_item("f-10", name="file.txt")
+    ops = FetchOpsMock(item)
+    console, _ = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
+    args = Namespace(
+        id="f-10",
+        path="backup",
+        recursive=False,
+        force=False,
+        export=False,
+        dry_run=False,
+    )
+
+    handle_fetch(args, ops)
+
+    assert ops.last_call["output_path"] == (Path("download") / "backup").resolve()
+
+
+def test_handle_fetch_uses_default_download_dir_when_path_omitted(monkeypatch):
+    item = make_item("f-11", name="file.txt")
+    ops = FetchOpsMock(item)
+    console, _ = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
+    args = Namespace(
+        id="f-11",
+        path=None,
+        recursive=False,
+        force=False,
+        export=False,
+        dry_run=False,
+    )
+
+    handle_fetch(args, ops)
+
+    assert ops.last_call["output_path"] == Path("download").resolve()
+
+
+def test_handle_fetch_reports_dry_run_status(monkeypatch, tmp_path):
+    class FetchOpsDryRunMock(FetchOpsMock):
+        def fetch_item(self, item_or_id, output_path, recursive, force, export, dry_run, on_progress):
+            self.last_call = {
+                "item_or_id": item_or_id,
+                "output_path": output_path,
+                "recursive": recursive,
+                "force": force,
+                "export": export,
+                "dry_run": dry_run,
+            }
+            on_progress(item_or_id.id, item_or_id.name, 0, item_or_id.size, "dry_run")
+
+    item = make_item("f-3", name="dryrun.txt")
+    ops = FetchOpsDryRunMock(item)
+    console, output = build_error_console()
+    monkeypatch.setattr(cli_module, "error_console", console)
+    args = Namespace(
+        id="f-3",
+        path=str(tmp_path),
+        recursive=False,
+        force=False,
+        export=False,
+        dry_run=True,
+    )
+
+    handle_fetch(args, ops)
+    text = output.getvalue()
+
+    assert "DRY: dryrun.txt" in text
+    assert "Command 'fetch' completed." in text
 
 
 def test_handle_fetch_tty_does_not_crash_on_finished_then_error(monkeypatch, tmp_path):

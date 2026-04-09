@@ -6,7 +6,7 @@ import pytest
 
 from gdrive_cleaner.drive_core import DriveCore, FileFilter
 from gdrive_cleaner.operations import DriveOperations
-from tests.helpers_drive import setup_test_structure
+from tests.helpers.helpers_drive import setup_test_structure
 
 pytestmark = pytest.mark.integration
 

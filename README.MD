@@ -206,7 +206,7 @@ Options:
 
 - `id` (required): source file ID.
 - `-n, --name <NEW_NAME>`: optional new file name for the copied item.
-- `-t, --target_id <FOLDER_ID>`: optional target folder ID.
+- `-t, --target-id <FOLDER_ID>`: optional target folder ID.
 - `-d, --dry-run`: preview copy action.
 - `--force`: skip confirmation prompt.
 
