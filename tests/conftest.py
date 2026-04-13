@@ -40,6 +40,3 @@ def mock_ops() -> DriveOperations:
 def mock_drive() -> DriveCore:
     return create_autospec(DriveCore, instance=True)
 
-# @pytest.fixture
-# def mock_item() -> FileItem:
-#     return create_autospec(FileItem, instance=True)

@@ -70,8 +70,8 @@ def valid_date(date_str):
 
 
 def resolve_output_path(
-    raw_path: str,
     *,
+    raw_path: str,
     base_folder: str,
     auto_filename: str | None = None,
 ) -> Path:
@@ -546,7 +546,7 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
             # with error_console.status("[bold yellow]Export file list ...") as status:
             if args.csv:
                 output_csv = resolve_output_path(
-                    args.csv,
+                    raw_path=args.csv,
                     base_folder=EXPORT_FOLDER,
                     auto_filename=f"gdrive_analysis_{timestamp}.csv",
                 )
@@ -560,7 +560,7 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
                 exported_paths.append(output_csv)
             if args.xlsx:
                 output_xlsx = resolve_output_path(
-                    args.xlsx,
+                    raw_path=args.xlsx,
                     base_folder=EXPORT_FOLDER,
                     auto_filename=f"gdrive_analysis_{timestamp}.xlsx",
                 )
@@ -695,21 +695,21 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
     if args.csv:
         should_save = True
         report_path = resolve_output_path(
-            args.csv,
+            raw_path=args.csv,
             base_folder=REPORT_FOLDER,
             auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         )
     elif is_tty and confirm_saving_report():
         should_save = True
         report_path = resolve_output_path(
-            "AUTO",
+            raw_path="AUTO",
             base_folder=REPORT_FOLDER,
             auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         )
 
     if should_save and report_path is not None:
         try:
-            save_operation_report(result, output_path=report_path)
+            save_operation_report(result=result, output_path=report_path)
             error_console.print("[green]\u2714[/green] CSV report saved")
         except Exception as e:
             error_console.print(f"[yellow]\u26A0 Warning: Could not save CSV report:[/yellow] {e}")
@@ -791,21 +791,21 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
     if args.csv:
         should_save = True
         report_path = resolve_output_path(
-            args.csv,
+            raw_path=args.csv,
             base_folder=REPORT_FOLDER,
             auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         )
     elif is_tty and confirm_saving_report():
         should_save = True
         report_path = resolve_output_path(
-            "AUTO",
+            raw_path="AUTO",
             base_folder=REPORT_FOLDER,
             auto_filename=f"deleting_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         )
 
     if should_save and report_path is not None:
         try:
-            save_operation_report(result, output_path=report_path)
+            save_operation_report(result=result, output_path=report_path)
             error_console.print(
                 f"[green]\u2714[/green] CSV report saved for folder: '{folder.name}'"
             )
@@ -815,7 +815,7 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
     error_console.print("Command 'clear-folder' completed.")
 
 
-def handle_fetch(args, ops: DriveOperations):
+def handle_fetch(args: argparse.Namespace, ops: DriveOperations):
     is_tty = sys.stdout.isatty()
     with error_console.status(f"[bold yellow]Fetching metadata for {args.id}..."):
         item = ops.get_item(file_id=args.id)
@@ -884,7 +884,7 @@ def handle_fetch(args, ops: DriveOperations):
         output_path = (
             Path(DOWNLOAD_FOLDER).resolve()
             if args.path is None
-            else resolve_output_path(args.path, base_folder=DOWNLOAD_FOLDER)
+            else resolve_output_path(raw_path=args.path, base_folder=DOWNLOAD_FOLDER)
         )
         ops.fetch_item(
             item_or_id=item,

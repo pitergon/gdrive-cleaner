@@ -1,4 +1,4 @@
-# tests\unit\cli\test_cli_parser_validators.py 
+# tests\unit\cli\test_cli_parser_validators.py
 # Parser-level CLI tests: verify argparse wiring for typed/validated options
 # (path/date/int/extension and mutually-exclusive groups) across commands.
 # These tests check input parsing/validation only, not handler business flow.
@@ -216,6 +216,16 @@ def test_parser_accepts_delete_csv_without_path_as_auto():
 
 # clear-folder command
 CLEAR_FOLDER_TYPED_INVALID_CASES: list[ParserCase] = [
+    ParserCase(
+        "missing-folder",
+        ["clear-folder"],
+        "missing folder_id",
+    ),
+    ParserCase(
+        "missing-folder-id-with-before",
+        ["clear-folder", "--before", "2025-01-01"],
+        "missing folder_id",
+    ),
     ParserCase(
         "clear-folder-before-invalid-date",
         ["clear-folder", "folder-1", "--before", "bad-date"],
