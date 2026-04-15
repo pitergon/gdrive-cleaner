@@ -514,6 +514,13 @@ def build_parser():
     )
     return main_parser
 
+def ensure_folder(folder_id: str, ops: DriveOperations) -> FileItem:
+    folder = ops.get_item(file_id=folder_id)
+    if not folder:
+        raise UserInputError(f"Folder {folder_id} not found.")
+    elif folder.mime_type != "application/vnd.google-apps.folder":
+        raise UserInputError(f"ID {folder_id} is not a folder.")
+    return folder
 
 # --- Command Handlers ---
 def handle_list(args: argparse.Namespace, ops: DriveOperations):
@@ -522,12 +529,10 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
 
     if args.id:
         with error_console.status("[bold yellow]Checking folder ..."):
-            folder = ops.get_item(file_id=args.id)
-            if not folder or folder.mime_type != "application/vnd.google-apps.folder":
-                raise UserInputError(f"Folder {args.id} not found.")
+            _ = ensure_folder(args.id, ops)
 
     file_filter = FileFilter(
-        folder_id=args.id if args.id else None,
+        folder_id=args.id,
         created_before=date_before,
         created_after=date_after,
         name_exact=name_exact,
@@ -735,9 +740,7 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
             status.update(msg)
 
         # 1. Checking
-        folder = ops.get_item(file_id=args.folder_id)
-        if not folder or folder.mime_type != "application/vnd.google-apps.folder":
-            raise UserInputError(f"Folder {args.folder_id} not found.")
+        folder = ensure_folder(args.folder_id, ops)
         # 2. Listing
         status.update(f"[bold yellow]Listing files in '{folder.name}'...[/bold yellow]")
         file_filter = FileFilter(
@@ -932,13 +935,7 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
 
         target = None
         if args.target_id:
-            target = ops.get_item(file_id=args.target_id)
-            if not target:
-                raise UserInputError(
-                    f"Target folder with ID '{args.target_id}' not found."
-                )
-            if target.mime_type != "application/vnd.google-apps.folder":
-                raise UserInputError(f"Target ID '{args.target_id}' is not a folder.")
+            target = ensure_folder(args.target_id, ops)
 
     target_id = target.id if target else None
 
