@@ -3,11 +3,14 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
+from googleapiclient.errors import HttpError
 
 from gdrive_cleaner.drive_core import DriveCore, FileFilter, FileItem, OperationResult
 
 logger = logging.getLogger(__name__)
 
+class OperationInputError(Exception):
+    pass
 
 def convert_size(size_bytes: int | float):
     try:
@@ -34,18 +37,37 @@ class DriveOperations:
         limit: int | None = None,
         on_progress: Callable | None = None,
     ) -> list[FileItem]:
-        if self.items_cache:
-            self.logger.debug(f"Using {len(self.items_cache)} cached items for listing files.")
-            return self.items_cache
 
         def cb_wrapper(count):
             if on_progress:
                 on_progress("Listing files...", count)
 
-        items = self.drive.list_files(file_filter=file_filter, limit=limit, on_progress=cb_wrapper)
+        try:
+            items = self.drive.list_files(file_filter=file_filter, limit=limit, on_progress=cb_wrapper)
+        except HttpError as e:
+            if e.resp.status == 404 and file_filter and file_filter.folder_id:
+                raise OperationInputError(f"Folder {file_filter.folder_id} not found") from e
+            raise
+
         logger.info(
             f"Listed {len(items)} items from Google Drive with filter: {file_filter} and limit: {limit}"
         )
+
+        return items
+
+    def _list_files_cached(
+        self,
+        file_filter: FileFilter | None = None,
+        limit: int | None = None,
+        on_progress: Callable | None = None,
+    ) -> list[FileItem]:
+        """Used only in case if both CSV and XLSX exports are requested, to aviod double calls and different results"""
+
+        if self.items_cache:
+            self.logger.debug("Return items from cache")
+            return self.items_cache
+        self.logger.debug("Cache is empty, fetching items from API")
+        items = self.list_files(file_filter=file_filter, limit=limit, on_progress=on_progress)
         self.items_cache = items
         return items
 
@@ -141,7 +163,7 @@ class DriveOperations:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if on_progress:
             on_progress("Listing files...", None)
-        items = self.list_files(file_filter=file_filter, limit=limit, on_progress=on_progress)
+        items = self._list_files_cached(file_filter=file_filter, limit=limit, on_progress=on_progress)
         if on_progress:
             on_progress("Processing...", None)
         rows = self._prepare_rows(items, resolve_ext_parents=resolve_ext_parents)
@@ -171,7 +193,7 @@ class DriveOperations:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if on_progress:
             on_progress("Listing files...", None)
-        items = self.list_files(file_filter=file_filter, limit=limit, on_progress=on_progress)
+        items = self._list_files_cached(file_filter=file_filter, limit=limit, on_progress=on_progress)
         if on_progress:
             on_progress("Processing...", None)
         rows = self._prepare_rows(items, resolve_ext_parents=resolve_ext_parents)
@@ -341,7 +363,7 @@ class DriveOperations:
             else:
                 target_dir.mkdir(parents=True, exist_ok=True)
 
-            children = self.drive.list_files(FileFilter(folder_id=item.id))
+            children = self.list_files(FileFilter(folder_id=item.id))
             for child in children:
                 if child.mime_type == "application/vnd.google-apps.folder":
                     if recursive:

@@ -19,7 +19,7 @@ from rich.progress import (
 )
 
 from gdrive_cleaner.drive_core import DriveCore, FileFilter, FileItem, OperationResult
-from gdrive_cleaner.operations import DriveOperations, convert_size
+from gdrive_cleaner.operations import DriveOperations, OperationInputError, convert_size
 
 CONSOLE_LIMIT = 200
 EXPORT_FOLDER = "export"
@@ -520,6 +520,12 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
     date_before, date_after = get_date_filters(args)
     name_exact, name_contains = get_name_filters(args)
 
+    if args.id:
+        with error_console.status("[bold yellow]Checking folder ..."):
+            folder = ops.get_item(file_id=args.id)
+            if not folder or folder.mime_type != "application/vnd.google-apps.folder":
+                raise UserInputError(f"Folder {args.id} not found.")
+
     file_filter = FileFilter(
         folder_id=args.id if args.id else None,
         created_before=date_before,
@@ -543,7 +549,6 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
 
         if args.csv or args.xlsx:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            # with error_console.status("[bold yellow]Export file list ...") as status:
             if args.csv:
                 output_csv = resolve_output_path(
                     raw_path=args.csv,
@@ -573,7 +578,6 @@ def handle_list(args: argparse.Namespace, ops: DriveOperations):
                 )
                 exported_paths.append(output_xlsx)
         else:
-            # with error_console.status("[bold yellow]Getting file list from Gdrive API ...") as status:
             items = ops.list_files(file_filter=file_filter, limit=limit, on_progress=on_progress)
 
     if items is not None:
@@ -1009,7 +1013,7 @@ def main():
         try:
             handler(args, ops)
 
-        except UserInputError as e:
+        except (UserInputError, OperationInputError) as e:
             error_console.print(f"Error during command '{args.command}': {e}")
             logger.debug("UserInputError details", exc_info=True)
             sys.exit(1)
@@ -1018,9 +1022,9 @@ def main():
                 f"\n[yellow]Operation '{args.command}' interrupted by user. Exiting...[/yellow]"
             )
             sys.exit(1)
-        except Exception:
-            error_console.print(f"Command '{args.command}' failed. Use -vv for details.")
-            logger.exception("Unhandled exception details")
+        except Exception as e:
+            error_console.print(f"Command '{args.command}' failed. {e} Use -vv for details. ")
+            logger.debug("Unhandled exception details", exc_info=True)
             sys.exit(1)
 
 
