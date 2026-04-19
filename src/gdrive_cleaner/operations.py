@@ -46,7 +46,7 @@ class DriveOperations:
             items = self.drive.list_files(file_filter=file_filter, limit=limit, on_progress=cb_wrapper)
         except HttpError as e:
             if e.resp.status == 404 and file_filter and file_filter.folder_id:
-                raise OperationInputError(f"Folder {file_filter.folder_id} not found") from e
+                raise OperationInputError(f"Folder with ID '{file_filter.folder_id}' not found") from e
             raise
 
         logger.info(

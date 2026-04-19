@@ -1,9 +1,9 @@
 import os
 import uuid
 from pathlib import Path
-from typing import NoReturn
 
 import pytest
+from googleapiclient.errors import HttpError
 
 from gdrive_cleaner.drive_core import DriveCore, FileFilter
 from gdrive_cleaner.operations import DriveOperations
@@ -176,3 +176,12 @@ def test_drive_core_create_copy_cycle(drive: DriveCore):
             drive.delete_ids([folder_id])
         except Exception:
             pass
+
+
+def test_404_on_folder_id_raises_exception(drive: DriveCore):
+    file_filter = FileFilter(folder_id="nonexistent_folder_id")
+
+    with pytest.raises(HttpError) as exc_info:
+        drive.list_files(file_filter=file_filter)
+
+    assert exc_info.value.resp.status == 404
