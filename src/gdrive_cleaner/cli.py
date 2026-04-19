@@ -70,10 +70,10 @@ def valid_date(date_str):
 
 
 def resolve_output_path(
-    *,
-    raw_path: str,
-    base_folder: str,
-    auto_filename: str | None = None,
+        *,
+        raw_path: str,
+        base_folder: str,
+        auto_filename: str | None = None,
 ) -> Path:
     if raw_path == "AUTO":
         if not auto_filename:
@@ -279,8 +279,8 @@ def smart_print(items: list[FileItem], console_limit=CONSOLE_LIMIT):
 
 
 def save_operation_report(
-    result: OperationResult,
-    output_path: Path,
+        result: OperationResult,
+        output_path: Path,
 ):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -514,13 +514,15 @@ def build_parser():
     )
     return main_parser
 
+
 def ensure_folder(folder_id: str, ops: DriveOperations) -> FileItem:
     folder = ops.get_item(file_id=folder_id)
     if not folder:
-        raise UserInputError(f"Folder {folder_id} not found.")
+        raise UserInputError(f"Folder '{folder_id}' not found.")
     elif folder.mime_type != "application/vnd.google-apps.folder":
-        raise UserInputError(f"ID {folder_id} is not a folder.")
+        raise UserInputError(f"ID '{folder_id}' is not a folder.")
     return folder
+
 
 # --- Command Handlers ---
 def handle_list(args: argparse.Namespace, ops: DriveOperations):
@@ -606,7 +608,8 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
     resolved_ids_count: int | None = None
 
     if has_ids_filter and (has_date_filter or has_name_filter):
-        raise UserInputError("Use either ID/--ids-file or API filters (--older/--before/--newer/--after/--name/--contains), not both.")
+        raise UserInputError(
+            "Use either ID/--ids-file or API filters (--older/--before/--newer/--after/--name/--contains), not both.")
 
     items = []
     with error_console.status("[bold yellow]Checking...") as status:
@@ -675,14 +678,14 @@ def handle_delete(args: argparse.Namespace, ops: DriveOperations):
         return
 
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[red]Deleting...[/red]"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        console=error_console,
-        refresh_per_second=5,
-        disable=not is_tty,
-        transient=True,
+            SpinnerColumn(),
+            TextColumn("[red]Deleting...[/red]"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=error_console,
+            refresh_per_second=5,
+            disable=not is_tty,
+            transient=True,
     ) as progress:
         task = progress.add_task("Cleaning Drive", total=len(items))
         result = ops.delete_items(
@@ -775,14 +778,14 @@ def handle_clear_folder(args: argparse.Namespace, ops: DriveOperations):
         return
 
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[red]Deleting...[/red]"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        console=error_console,
-        refresh_per_second=5,
-        disable=not is_tty,
-        transient=True,
+            SpinnerColumn(),
+            TextColumn("[red]Deleting...[/red]"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=error_console,
+            refresh_per_second=5,
+            disable=not is_tty,
+            transient=True,
     ) as progress:
         task = progress.add_task("Cleaning Drive", total=len(items))
         result = ops.delete_items(
@@ -831,14 +834,14 @@ def handle_fetch(args: argparse.Namespace, ops: DriveOperations):
         raise UserInputError(f"Item with ID '{args.id}' not found.")
 
     with Progress(
-        SpinnerColumn(),
-        TextColumn("[red]Fetching...[/red]"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        console=error_console,
-        refresh_per_second=5,
-        disable=not is_tty,
-        transient=True,
+            SpinnerColumn(),
+            TextColumn("[red]Fetching...[/red]"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=error_console,
+            refresh_per_second=5,
+            disable=not is_tty,
+            transient=True,
     ) as progress:
         tasks = {}
 
@@ -925,7 +928,6 @@ def handle_quota(args: argparse.Namespace, ops: DriveOperations):
 
 
 def handle_copy(args: argparse.Namespace, ops: DriveOperations):
-
     with error_console.status("[bold yellow]Analysing...[/bold yellow]"):
         item = ops.get_item(file_id=args.id)
         if not item:
@@ -940,7 +942,7 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
     target_id = target.id if target else None
 
     source_msg = f"'{item.name}' (ID: {item.id})"
-    new_name = args.name if args.name else f"Copy of {item.name}"
+    new_name = args.name if args.name else f"Copy of {item.name}"  # default copy name in API is "Copy of {original name}"
     target_msg = f"'{new_name}' in folder '{target.name}' (ID: {target.id})" if target else f"'{new_name}'"
 
     if args.dry_run:
@@ -949,15 +951,13 @@ def handle_copy(args: argparse.Namespace, ops: DriveOperations):
         return
 
     if not confirm_copying(args, source_msg, target_msg):
-        error_console.print("Copy operation cancelled.")
         error_console.print("Command 'copy' cancelled.")
         return
 
     with error_console.status(f"[bold yellow]Copying {item.name}...[/bold yellow]"):
         new_item = ops.copy_file(
             file_id=item.id,
-            # new_name=new_name,
-            new_name=args.name,
+            new_name=new_name,  #  default copy name in API is "Copy of {original name}"
             target_id=target_id,
         )
 
