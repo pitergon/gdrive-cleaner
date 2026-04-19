@@ -166,6 +166,7 @@ def test_parser_accepts_valid_list_typed_values():
 
 # delete command
 DELETE_TYPED_INVALID_CASES: list[ParserCase] = [
+    ParserCase("delete-ids-file-wrong-ext", ["delete", "--ids-file", "ids.txt"], "--ids-file uses valid_ids_file"),
     ParserCase("delete-before-invalid-date", ["delete", "--before", "bad-date"], "--before uses valid_date"),
     ParserCase("delete-after-invalid-date", ["delete", "--after", "bad-date"], "--after uses valid_date"),
     ParserCase("delete-older-non-int", ["delete", "--older", "abc"], "--older uses int"),
@@ -207,6 +208,20 @@ def test_parser_accepts_existing_ids_file_path_on_delete(tmp_path):
     ids_file.write_text("id\nx\n", encoding="utf-8")
     args = parse_ok(["delete", "--ids-file", str(ids_file)])
     assert args.ids_file == str(ids_file)
+
+
+@pytest.mark.parametrize("ext", [".csv", ".xlsx", ".xls"])
+def test_parser_accepts_ids_file_with_valid_extensions(tmp_path, ext):
+    ids_file = tmp_path / f"ids{ext}"
+    ids_file.write_text("id\n123\n", encoding="utf-8")
+    args = parse_ok(["delete", "--ids-file", str(ids_file)])
+    assert args.ids_file == str(ids_file)
+
+
+def test_parser_rejects_existing_ids_file_with_wrong_extension(tmp_path):
+    ids_file = tmp_path / "ids.txt"
+    ids_file.write_text("id\n123\n", encoding="utf-8")
+    assert_parse_error(["delete", "--ids-file", str(ids_file)], "--ids-file requires .csv, .xlsx or .xls")
 
 
 def test_parser_accepts_delete_csv_without_path_as_auto():

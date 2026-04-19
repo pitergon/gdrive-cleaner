@@ -69,6 +69,14 @@ def valid_date(date_str):
         ) from e
 
 
+def valid_ids_file(path):
+    """Validate that file exists and has correct extension for IDs file"""
+    valid_path(path)
+    if not path.lower().endswith(('.csv', '.xlsx', '.xls')):
+        raise argparse.ArgumentTypeError("File must have .csv, .xlsx or .xls extension")
+    return path
+
+
 def resolve_output_path(
         *,
         raw_path: str,
@@ -146,8 +154,10 @@ def read_ids_file(file_path: Path) -> list[str]:
     try:
         if file_path.suffix.lower() in [".xlsx", ".xls"]:
             df = pd.read_excel(file_path, engine="calamine")
-        else:
+        elif file_path.suffix.lower() == ".csv":
             df = pd.read_csv(file_path)
+        else:
+            raise UserInputError("Unsupported file type. Only .csv, .xls and .xlsx are supported.")
     except Exception as e:
         raise UserInputError(f"Error reading file {file_path}: {e}") from e
 
@@ -442,8 +452,8 @@ def build_parser():
         "-i",
         "--ids-file",
         metavar="<PATH>",
-        type=valid_path,
-        help="Path to file (.csv/.xlsx) with IDs",
+        type=valid_ids_file,
+        help="Path to file (.csv/.xlsx/.xls) with IDs",
     )
     delete_cmd.add_argument(
         "--csv",
