@@ -180,7 +180,7 @@ def test_clear_folder_id_not_found_raises(mock_ops, clear_folder_setup):
     setup = clear_folder_setup(folder_id="missing-id")
     as_mock(mock_ops.get_item).return_value = None
 
-    with pytest.raises(UserInputError, match="Folder missing-id not found."):
+    with pytest.raises(UserInputError, match="Folder 'missing-id' not found."):
         handle_clear_folder(setup.args, mock_ops)
 
 
@@ -188,7 +188,7 @@ def test_clear_folder_id_not_folder_raises(mock_ops, clear_folder_setup):
     setup = clear_folder_setup(folder_id="not-a-folder")
     as_mock(mock_ops.get_item).return_value = build_item("not-a-folder", mime_type="application/vnd.google-apps.file")
 
-    with pytest.raises(UserInputError, match="Folder not-a-folder not found."):
+    with pytest.raises(UserInputError, match="ID 'not-a-folder' is not a folder."):
         handle_clear_folder(setup.args, mock_ops)
 
 
@@ -230,4 +230,5 @@ def test_clear_folder_with_relative_csv_path_resolves_under_reports(mock_ops, cl
     assert bound_args['result'] == setup.result
 
     output_path = save_report_mock.call_args.kwargs["output_path"]
-    assert str(output_path).endswith(str(Path("reports") / "ops" / "report.csv"))
+    assert output_path.parts[-3:] == ("reports", "ops", "report.csv")
+

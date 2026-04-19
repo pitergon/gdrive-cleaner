@@ -214,4 +214,4 @@ def test_delete_with_relative_csv_path_resolves_under_reports(mock_ops, monkeypa
     save_report_mock.assert_called_once()
 
     output_path = save_report_mock.call_args.kwargs["output_path"]
-    assert str(output_path).endswith(str(Path("reports") / "ops" / "report.csv"))
+    assert output_path.parts[-3:] == ("reports", "ops", "report.csv")

@@ -1,6 +1,7 @@
 import os
 import uuid
 from pathlib import Path
+from typing import NoReturn
 
 import pytest
 
@@ -54,7 +55,7 @@ def test_drive_core_real_create_list_get_delete_cycle(drive: DriveCore):
         )
     except Exception as exc:
         _skip_on_blocked_network(exc)
-
+        raise  # for static analyzer
     try:
         file_id = drive.create_item(
             name=test_file_name,
@@ -100,6 +101,8 @@ def test_fetch_item_recursive_uses_nested_structure(
         created = setup_test_structure(drive, parent_id, name_suffix=run_id)
     except Exception as exc:
         _skip_on_blocked_network(exc)
+        raise  # for static analyzer
+
     root_folder_id = created["root_folder_id"]
     root_folder_name = created["root_folder_name"]
     subfolder_l1_name = created["subfolder_l1_name"]
@@ -127,3 +130,49 @@ def test_fetch_item_recursive_uses_nested_structure(
         assert (recursive_root / subfolder_l1_name / subfolder_l2_name / "sub_file_l2.txt").exists()
     finally:
         drive.delete_ids([root_folder_id])
+
+
+def test_drive_core_create_copy_cycle(drive: DriveCore):
+    parent_id = _require_env("TEST_DRIVE_FOLDER_ID")
+    run_id = uuid.uuid4().hex[:8]
+
+    test_folder_name = f"gdc_it_copy_{run_id}"
+    test_file_name = f"file_{run_id}.txt"
+    new_file_name = f"copy_of_{test_file_name}"
+    try:
+        folder_id = drive.create_item(
+            name=test_folder_name,
+            mime_type="application/vnd.google-apps.folder",
+            parent_id=parent_id,
+        )
+    except Exception as exc:
+        _skip_on_blocked_network(exc)
+        raise  # for static analyzer
+    try:
+        file_id = drive.create_item(
+            name=test_file_name,
+            mime_type="text/plain",
+            parent_id=folder_id,
+            content="integration test content",
+        )
+
+        result = drive.copy_file(file_id=file_id, new_name=new_file_name, target_id=folder_id)
+        print(f"Copy result: {result}")
+        items = drive.list_files(FileFilter(folder_id=folder_id))
+        names = {item.name for item in items}
+        ids = {item.id for item in items}
+
+        assert result.keys() >= {"id", "name", "parents"}
+
+        assert test_file_name in names
+        assert new_file_name in names
+        assert file_id in ids
+        assert result["id"] in ids
+        assert result["name"] == new_file_name
+
+    finally:
+        # Folder delete is recursive at Drive level; this cleans leftovers on partial failures.
+        try:
+            drive.delete_ids([folder_id])
+        except Exception:
+            pass

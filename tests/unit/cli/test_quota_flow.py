@@ -2,10 +2,10 @@
 import sys
 
 import pytest
-from helpers.helpers_mock import as_mock
 
 from gdrive_cleaner.cli import handle_quota
 from tests.helpers.cli_args_builders import build_quota_args
+from tests.helpers.helpers_mock import as_mock
 
 
 @pytest.mark.parametrize("is_tty", [True, False])

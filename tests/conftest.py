@@ -15,6 +15,8 @@ TEST_FOLDER = ROOT / "tests"
 
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def pytest_configure(config):
@@ -39,4 +41,3 @@ def mock_ops() -> DriveOperations:
 @pytest.fixture
 def mock_drive() -> DriveCore:
     return create_autospec(DriveCore, instance=True)
-

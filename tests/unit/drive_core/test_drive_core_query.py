@@ -1,24 +1,24 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from gdrive_cleaner.drive_core import DriveCore, FileFilter
 
 
-def make_core_for_query(service_account_email: str = "sa@example.com") -> DriveCore:
-    core = object.__new__(DriveCore)
-    core.service_account_email = service_account_email
+@pytest.fixture
+def core() -> DriveCore:
+    core = object.__new__(DriveCore)  #  without calling __init__ method
+    core.service_account_email = "sa@example.com"
     return core
 
 
-def test_build_query_default_filter():
-    core = make_core_for_query()
+def test_build_query_default_filter(core):
     query = core._build_query(FileFilter())
-
     assert "'sa@example.com' in owners" in query
     assert "trashed = false" in query
 
 
-def test_build_query_full_filter_set():
-    core = make_core_for_query("svc@example.com")
+def test_build_query_full_filter_set(core):
     query = core._build_query(
         FileFilter(
             folder_id="folder123",
@@ -30,7 +30,7 @@ def test_build_query_full_filter_set():
         )
     )
 
-    assert "'svc@example.com' in owners" in query
+    assert "'sa@example.com' in owners" in query
     assert "'folder123' in parents" in query
     assert "name contains 'invoice'" in query
     assert "createdTime > '2025-03-02T00:00:00+00:00'" in query
@@ -40,29 +40,23 @@ def test_build_query_full_filter_set():
     assert "trashed = false" in query
 
 
-def test_build_query_name_and_contains_filters():
-    core = make_core_for_query()
+def test_build_query_name_and_contains_filters(core):
     query = core._build_query(
         FileFilter(
             name_exact="report.csv",
             name_contains="report_",
         )
     )
-
     assert "name = 'report.csv'" in query
     assert "name contains 'report_'" in query
 
 
-def test_build_query_escapes_single_quote_and_backslash():
-    core = make_core_for_query()
+def test_build_query_escapes_single_quote_and_backslash(core):
     query = core._build_query(FileFilter(name_exact=r"O'Reilly\Docs"))
-
     assert r"name = 'O\'Reilly\\Docs'" in query
 
 
-def test_build_query_can_disable_owner_only_and_trashed_filter():
-    core = make_core_for_query()
+def test_build_query_can_disable_owner_only_and_trashed_filter(core):
     query = core._build_query(FileFilter(owner_only=False, trashed=True))
-
     assert "owners" not in query
     assert "trashed = false" not in query

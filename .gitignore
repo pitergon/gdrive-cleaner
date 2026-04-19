@@ -67,7 +67,7 @@ coverage.xml
 # Generated report files (any depth)
 **/[Rr]eport_*.csv
 
-# If your team commits CSV/XLS(X) fixtures, remove these lines.
+Copilot: Sign In# If your team commits CSV/XLS(X) fixtures, remove these lines.
 *.csv
 *.xls
 *.xlsx

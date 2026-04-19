@@ -12,6 +12,11 @@ def as_mock(obj: Any) -> Mock:
 def get_bound_args(mock_obj: Mock, func: Callable) -> dict[str, Any]:
     """Return the bound arguments for a call recorded by a Mock, using the signature of an original function.
 
+    # TODO: update for working with class methods (handle self/cls)
+    !!!IMPORTANT: Doesn't work with object methods, only with standalone functions. For methods,
+    the first parameter (usually `self`) is not automatically handled by the Mock's call_args, so the binding will fail.
+    Use with standalone functions or static methods.
+
     This inspects the Mock's most recent call (mock_obj.call_args) and binds its positional
     and keyword arguments to the parameter names of the provided function `func` using
     inspect.signature(func).bind(...). Useful to obtain a mapping from parameter names

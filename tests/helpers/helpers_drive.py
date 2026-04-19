@@ -6,8 +6,7 @@ from gdrive_cleaner.drive_core import DriveCore, FileItem
 def build_item(
     file_id: str, name: str = "name", mime_type: str = "text/plain", size: int = 10, parents: list[str] | None = None
 ) -> FileItem:
-    if parents is None:
-        parents = []
+    parents = parents or []
     return FileItem(
         id=file_id,
         name=name,
