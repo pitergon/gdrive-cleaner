@@ -5,6 +5,7 @@ import pytest
 
 from gdrive_cleaner import cli as cli_module
 from gdrive_cleaner.cli import (
+    UserInputError,
     confirm_copying,
     confirm_deleting,
     confirm_saving_report,
@@ -12,7 +13,6 @@ from gdrive_cleaner.cli import (
     get_name_filters,
     read_ids_file,
     save_operation_report,
-    UserInputError,
 )
 from gdrive_cleaner.drive_core import OperationEntry, OperationResult
 from tests.helpers.helpers_drive import build_item
