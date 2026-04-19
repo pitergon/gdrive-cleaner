@@ -70,7 +70,7 @@ The CLI resolves credentials in this order:
 
 1. `--sa <JSON_FILE>`
 2. `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-3. `service_account.json` in project root
+3. `service_account.json` in CWD (not necessarily project root)
 
 If the resolved file does not exist, command exits with error.
 
@@ -130,6 +130,7 @@ Input source:
 Important parser/validation rules:
 
 - `id` and `--ids-file` are mutually exclusive.
+- `--ids-file` validates both file existence and extension at parse time.
 - Mixing ID source (`id`/`--ids-file`) with API filters (`--older/--before/--newer/--after/--name/--contains`) is rejected at runtime.
 - `--csv [PATH]` is independent from input source and can be combined with `id`, `--ids-file`, or API filters.
 - If `PATH` is relative, it is resolved under `reports/`; absolute paths are used as-is.
@@ -284,7 +285,7 @@ pytest -m integration
 Notes:
 - Integration tests create temporary items under `TEST_DRIVE_FOLDER_ID` and remove them in cleanup.
 - Use a dedicated non-production test folder only.
-- `pytest` auto-loads `.env` and `.env.test` if present; shell env vars have priority.
+- `pytest` auto-loads `.env` and `.env.test` if present; test env vars have priority.
 
 ## Key Behavior and Risks
 
@@ -350,6 +351,7 @@ gdrive-cleaner quota
 - Missing credentials file -> immediate error exit.
 - Invalid date format -> parser error (`YYYY-MM-DD` required).
 - Invalid date range or incompatible filter combination -> command abort.
+- Invalid --ids-file extension -> parser error (only .csv, .xlsx, .xls are allowed)
 - Unhandled runtime errors -> non-zero exit with concise message (details available via verbose logging).
 
 
