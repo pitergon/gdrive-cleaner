@@ -546,3 +546,116 @@ class DriveCore:
         if not value:
             return None
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    # ----------------------------------
+    # MOVE FILE OR FOLDER (TESTING PURPOSES)
+    # ----------------------------------
+
+    def move_items_batch(self, ids: list[str], new_parent_id: str, remove_old_parents: bool = True,
+                         supports_all_drives: bool = False, batch_size: int = 100,
+                         on_progress: Callable = None) -> OperationResult:
+        """Move multiple files/folders by updating parents using files.update in batches (no copy+delete)."""
+
+        ids = list(dict.fromkeys(ids))
+
+        item_list = self.get_files_metadata_batch(ids)
+
+        entries = []
+        success_count = 0
+        failed_count = 0
+
+        def callback(request_id, response, exception):
+            nonlocal success_count, failed_count
+            item = item_list.get(request_id)
+            if item:
+                item_name = item.name
+                item_type = 'dir' if item.mime_type == FOLDER_MIME else 'file'
+                item_size = item.size if item.mime_type != FOLDER_MIME else 'N/A'
+            else:
+                item_name = request_id
+                item_type = 'unknown'
+                item_size = 'N/A'
+
+            if exception:
+                failed_count += 1
+                status = 'error'
+                error = str(exception)
+                logger.error(f"Failed to move {request_id}: {exception}")
+            else:
+                success_count += 1
+                status = 'success'
+                error = None
+                logger.debug(f"File {request_id} moved successfully")
+
+            entry = OperationEntry(
+                id=request_id, name=item_name, type=item_type, size=item_size, status=status, error=error
+            )
+            entries.append(entry)
+
+        ids_iterator = iter(ids)
+        while True:
+            chunk = list(islice(ids_iterator, batch_size))
+            if not chunk:
+                break
+
+            self.logger.debug(f"Starting batch moving for {len(chunk)} items")
+            batch = self.service.new_batch_http_request(callback=callback)
+            for fid in chunk:
+                if fid not in item_list or item_list[fid] is None:
+                    logger.error(f"Skipping move for {fid} because metadata could not be retrieved")
+                    continue
+                item = item_list[fid]
+                remove_parents = [p for p in item.parents if p != new_parent_id] if remove_old_parents else []
+
+                request_kwargs = {
+                    "fileId": fid,
+                }
+                if new_parent_id:
+                    request_kwargs["addParents"] = new_parent_id
+                if remove_parents:
+                    request_kwargs["removeParents"] = ",".join(remove_parents)
+                if supports_all_drives:
+                    request_kwargs["supportsAllDrives"] = True
+
+                batch.add(self.service.files().update(**request_kwargs), request_id=fid)
+
+            self._execute_batch(batch)
+
+            # UI Callback with number of processed items in the batch
+            if on_progress:
+                on_progress(len(chunk))
+
+            self.logger.debug(f"Completed batch moving for {len(chunk)} items")
+
+        return OperationResult(
+            total=len(ids),
+            success=success_count,
+            failed=failed_count,
+            entries=entries
+        )
+
+    def move_item(self, file_id: str, new_parent_id: str, remove_old_parents: bool = True,
+                  supports_all_drives: bool = False, fields: str = "id,parents") -> dict:
+        """
+        Move file/folder by updating parents using files.update (no copy+delete).
+        If remove_old_parents is True, current parents (except new_parent_id) will be removed.
+        """
+
+        meta = self.get_file_metadata(file_id)
+        current_parents = meta.parents if meta else []
+
+        remove_parents = [p for p in current_parents if p != new_parent_id] if remove_old_parents else []
+
+        request_kwargs = {
+            "fileId": file_id,
+            "fields": fields,
+        }
+        if new_parent_id:
+            request_kwargs["addParents"] = new_parent_id
+        if remove_parents:
+            request_kwargs["removeParents"] = ",".join(remove_parents)
+        if supports_all_drives:
+            request_kwargs["supportsAllDrives"] = True
+
+        request = self.service.files().update(**request_kwargs)
+        return self._execute(request)
